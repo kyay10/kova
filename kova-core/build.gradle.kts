@@ -4,11 +4,21 @@ plugins {
     alias(libs.plugins.kotest)
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-Xcontext-parameters",
+            "-opt-in=arrow.core.raise.ExperimentalRaiseAccumulateApi",
+        )
+    }
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    implementation(libs.arrow.core)
     testImplementation(libs.kotest.assertions.core)
     testImplementation(libs.kotest.property)
     testImplementation(libs.kotest.framework.engine)
