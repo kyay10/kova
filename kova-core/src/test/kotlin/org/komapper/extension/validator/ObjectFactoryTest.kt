@@ -79,9 +79,7 @@ class ObjectFactoryTest :
             }
 
             test("success - create") {
-                val factory = userSchema.bind(1)
-                val user = factory.create()
-                user shouldBe User(1)
+                shouldNotRaise { userSchema.bind(1).create() } shouldBe User(1)
             }
 
             test("failure - tryCreate") {
@@ -95,7 +93,7 @@ class ObjectFactoryTest :
 
             test("failure - create") {
                 val factory = userSchema.bind(-1)
-                shouldThrow<ValidationException> { factory.create() }.details.shouldBeSingleton {
+                shouldRaise { factory.create() }.shouldBeSingleton {
                     it.root shouldContain "<init>"
                     it.path.fullName shouldBe "id"
                     it.message.content shouldBe "Number -1 must be greater than or equal to 1"

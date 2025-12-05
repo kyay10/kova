@@ -1,7 +1,6 @@
 package org.komapper.extension.validator
 
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.arrow.core.shouldBeRight
+import io.kotest.assertions.arrow.core.shouldNotRaise
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
@@ -71,7 +70,7 @@ class ValidationContextTest :
             test("detect circular reference - direct") {
                 val obj = object {}
                 context(ValidationContext("a", Path("b", obj, null))) {
-                    addPathChecked("c", obj).shouldBeLeft()
+                    shouldRaise { addPathChecked("c", obj) {} }
                 }
             }
 
@@ -82,7 +81,7 @@ class ValidationContextTest :
                 val grandparent = Path("level1", obj1, null)
                 val parent = Path("level2", obj2, grandparent)
                 context(ValidationContext("a", parent)) {
-                    addPathChecked("level3", obj1).shouldBeLeft()
+                    shouldRaise { addPathChecked("level3", obj1) {} }
                 }
             }
 
@@ -90,13 +89,13 @@ class ValidationContextTest :
                 val obj1 = object {}
                 val obj2 = object {}
                 context(ValidationContext("a", Path("b", obj1, null))) {
-                    addPathChecked("c", obj2).shouldBeRight()
+                    shouldNotRaise { addPathChecked("c", obj2) {} }
                 }
             }
 
             test("no circular reference with null objects") {
                 context(ValidationContext("a", Path("b", null, null))) {
-                    addPathChecked("c", null).shouldBeRight()
+                    shouldNotRaise { addPathChecked("c", null) {} }
                 }
             }
 
@@ -107,7 +106,7 @@ class ValidationContextTest :
                 val data1 = TestData("test")
                 val data2 = TestData("test")
                 context(ValidationContext("a", Path("b", data1, null))) {
-                    addPathChecked("c", data2).shouldBeRight()
+                    shouldNotRaise { addPathChecked("c", data2) {} }
                 }
             }
         }

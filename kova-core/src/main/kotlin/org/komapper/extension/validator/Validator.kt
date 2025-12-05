@@ -1,16 +1,13 @@
 package org.komapper.extension.validator
 
-import arrow.core.Either
 import arrow.core.EitherNel
-import arrow.core.flatMap
-import arrow.core.getOrElse
-import arrow.core.leftNel
+import arrow.core.Nel
 import arrow.core.raise.RaiseDSL
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
-import arrow.core.raise.context.bindNelOrAccumulate
 import arrow.core.raise.context.either
+import arrow.core.raise.context.raise
 import arrow.core.raise.merge
-import arrow.core.right
 
 @RaiseDSL
 context(raise: RaiseAccumulate<Error>)
@@ -21,7 +18,7 @@ fun <Error, A> EitherNel<Error, A>.bindNel(): A =
  * Core validator interface for type-safe validation.
  *
  * A validator transforms an input of type [IN] into an output of type [OUT],
- * or produces a validation failure with detailed error information.
+ * or raises a validation failure with detailed error information.
  *
  * Validators are immutable and composable using operators like [plus], [and], [or],
  * [map], [then], and [chain].
@@ -35,18 +32,18 @@ fun interface Validator<IN, OUT> {
      *
      * @param input The value to validate
      * @param context The validation context tracking state and configuration
-     * @return A [ValidationResult] containing either the validated value or failure details
+     * @return the validated value
      */
-    context(_: ValidationContext)
-    fun execute(input: IN): ValidationResult<OUT>
+    context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+    fun execute(input: IN): Pair<OUT, ValidationContext>
 
     companion object {
-        fun <T> success() = IdentityValidator<T> { input -> Either.Right(input to contextOf<ValidationContext>()) }
+        fun <T> success() = IdentityValidator<T> { it to contextOf<ValidationContext>() }
     }
 }
 
 /**
- * Validates the input and returns a [ValidationResult].
+ * Validates the input
  *
  * This is the recommended way to perform validation when you want to handle
  * both success and failure cases programmatically.
@@ -55,19 +52,19 @@ fun interface Validator<IN, OUT> {
  * ```kotlin
  * val validator = Kova.string().min(1).max(10)
  * when (val result = validator.tryValidate("hello")) {
- *     is ValidationResult.Success -> println("Valid: ${result.value}")
- *     is ValidationResult.Failure -> println("Errors: ${result.details}")
+ *     is Either.Right -> println("Valid: ${result.value.first}")
+ *     is Either.Left -> println("Errors: ${result.value}")
  * }
  * ```
  *
  * @param input The value to validate
  * @param config Configuration options for validation (failFast, logging)
- * @return A [ValidationResult] containing either the validated value or failure details
+ * @return the validated value
  */
 fun <IN, OUT> Validator<IN, OUT>.tryValidate(
     input: IN,
-    config: ValidationConfig = ValidationConfig(),
-): ValidationResult<OUT> = context(ValidationContext(config = config)) { execute(input) }
+    config: ValidationConfig = ValidationConfig()
+): EitherNel<FailureDetail, Pair<OUT, ValidationContext>> = either { validateAndGetContext(input, config) }
 
 /**
  * Validates the input and returns the validated value, or throws an exception on failure.
@@ -89,14 +86,19 @@ fun <IN, OUT> Validator<IN, OUT>.tryValidate(
  * @param input The value to validate
  * @param config Configuration options for validation (failFast, logging)
  * @return The validated value of type [OUT]
- * @throws ValidationException if validation fails
  */
+context(_: Raise<Nel<FailureDetail>>)
 fun <IN, OUT> Validator<IN, OUT>.validate(
     input: IN,
     config: ValidationConfig = ValidationConfig(),
-): OUT = context(ValidationContext(config = config)) {
-    execute(input).getOrElse { throw ValidationException(it) }.first
-}
+): OUT = validateAndGetContext(input, config).first
+
+context(_: Raise<Nel<FailureDetail>>)
+fun <IN, OUT> Validator<IN, OUT>.validateAndGetContext(
+    input: IN,
+    config: ValidationConfig = ValidationConfig()
+): Pair<OUT, ValidationContext> =
+    context(ValidationContext(config = config)) { accumulateUnless(failFast) { execute(input) } }
 
 /**
  * Operator overload for [and]. Combines two validators that both must succeed.
@@ -126,12 +128,8 @@ operator fun <IN, OUT> Validator<IN, OUT>.plus(other: Validator<IN, OUT>): Valid
  */
 infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
     addLog("Validator.and") {
-        either {
-            accumulateUnless(failFast) {
-                execute(input).bindNelOrAccumulate()
-                other.execute(input).bindNel()
-            }
-        }
+        accumulating { execute(input) }
+        other.execute(input)
     }
 }
 
@@ -153,17 +151,17 @@ infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator
  */
 infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
     addLog("Validator.or") {
-        val selfDetails = merge { return@Validator execute(input).bind().right() }
-        val otherDetails = merge { return@Validator other.execute(input).bind().right() }
-        CompositeFailureDetail(contextOf<ValidationContext>(), first = selfDetails, second = otherDetails).leftNel()
+        val selfDetails = merge<Nel<FailureDetail>> { return@Validator accumulateUnless(failFast) { execute(input) } }
+        val otherDetails =
+            merge<Nel<FailureDetail>> { return@Validator accumulateUnless(failFast) { other.execute(input) } }
+        raise(CompositeFailureDetail(contextOf<ValidationContext>(), first = selfDetails, second = otherDetails))
     }
 }
 
 /**
  * Transforms the output value on successful validation.
  *
- * The transform function is only called if validation succeeds. If it throws
- * a [MessageException], the exception is converted to a validation failure.
+ * The transform function is only called if validation succeeds.
  *
  * Example:
  * ```kotlin
@@ -174,12 +172,10 @@ infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<
  * @param transform Function to transform the validated value
  * @return A new validator with the transformed output type
  */
-fun <IN, OUT, NEW> Validator<IN, OUT>.map(transform: (OUT) -> NEW): Validator<IN, NEW> = Validator { input ->
-    addLog("Validator.map") {
-        execute(input).flatMap { (value, context) ->
-            tryRun(context) { transform(value) }
-        }
-    }
+fun <IN, OUT, NEW> Validator<IN, OUT>.map(
+    transform: context(ValidationContext, RaiseAccumulate<FailureDetail>) (OUT) -> NEW
+): Validator<IN, NEW> = then {
+    transform(it) to contextOf<ValidationContext>()
 }
 
 /**
@@ -233,17 +229,7 @@ fun <IN, OUT, NEW> Validator<OUT, NEW>.compose(before: Validator<IN, OUT>): Vali
  */
 fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validator<IN, NEW> = Validator { input ->
     addLog("Validator.then") {
-        execute(input).flatMap { (value, context) ->
-            context(context) { after.execute(value) }
-        }
+        val (value, context) = execute(input)
+        context(context) { after.execute(value) }
     }
-}
-
-internal fun <R> tryRun(
-    context: ValidationContext,
-    block: () -> R,
-): ValidationResult<R> = try {
-    Either.Right(block() to context)
-} catch (cause: MessageException) {
-    SimpleFailureDetail(context, cause.validationMessage).leftNel()
 }

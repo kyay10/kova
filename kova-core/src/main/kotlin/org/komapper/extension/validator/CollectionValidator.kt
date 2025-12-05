@@ -1,7 +1,5 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.bindNelOrAccumulate
-
 /**
  * Type alias for collection validators.
  *
@@ -113,7 +111,7 @@ fun <C : Collection<*>> CollectionValidator<C>.length(
  */
 fun <E, C : Collection<E>> CollectionValidator<C>.onEach(validator: Validator<E, *>) =
     constrain("kova.collection.onEach") {
-        for ((i, element) in it.withIndex()) appendPath("[$i]<collection element>") {
-            validator.execute(element).bindNelOrAccumulate()
+        it.forEachIndexed { i, element ->
+            appendPath("[$i]<collection element>") { accumulating { validator.execute(element) } }
         }
     }

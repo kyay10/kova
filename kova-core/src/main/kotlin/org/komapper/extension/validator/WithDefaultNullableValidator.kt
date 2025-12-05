@@ -1,6 +1,5 @@
 package org.komapper.extension.validator
 
-import arrow.core.Either
 import arrow.core.raise.context.RaiseAccumulate
 
 /**
@@ -41,7 +40,8 @@ typealias WithDefaultNullableValidator<T, S> = Validator<T?, S>
  * @param defaultValue The value to use when input is null
  * @return A new validator that accepts null input but produces non-nullable output
  */
-fun <T : Any, S : Any> Validator<T, S>.asNullable(defaultValue: S): WithDefaultNullableValidator<T, S> = asNullable { defaultValue }
+fun <T : Any, S : Any> Validator<T, S>.asNullable(defaultValue: S): WithDefaultNullableValidator<T, S> =
+    asNullable { defaultValue }
 
 /**
  * Converts a non-nullable validator to a nullable validator with a lazily-evaluated default value.
@@ -63,7 +63,7 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(withDefault: () -> S): WithDef
     Validator { input ->
         val defaultValue = withDefault()
         addLog("Validator.asNullable(defaultValue=$defaultValue)") {
-            if (input == null) Either.Right(defaultValue to contextOf<ValidationContext>()) else execute(input)
+            if (input == null) defaultValue to contextOf<ValidationContext>() else execute(input)
         }
     }
 

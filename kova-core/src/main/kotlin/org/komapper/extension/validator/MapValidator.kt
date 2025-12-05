@@ -1,7 +1,6 @@
 package org.komapper.extension.validator
 
 import arrow.core.raise.context.RaiseAccumulate
-import arrow.core.raise.context.bindNelOrAccumulate
 
 /**
  * Type alias for map validators.
@@ -115,12 +114,9 @@ fun <K, V> MapValidator<K, V>.length(
  * @param validator The validator to apply to each entry
  * @return A new validator with per-entry validation
  */
-fun <K, V> MapValidator<K, V>.onEach(validator: Validator<Map.Entry<K, V>, *>) =
-    constrain("kova.map.onEach") {
-        validateOnEach(it) { entry ->
-            appendPath("<map entry>") { validator.execute(entry) }
-        }
-    }
+fun <K, V> MapValidator<K, V>.onEach(validator: Validator<Map.Entry<K, V>, *>) = constrain("kova.map.onEach") { map ->
+    appendPath("<map entry>") { map.validateOnEach { validator.execute(it) } }
+}
 
 /**
  * Validates each key of the map using the specified validator.
@@ -141,12 +137,9 @@ fun <K, V> MapValidator<K, V>.onEach(validator: Validator<Map.Entry<K, V>, *>) =
  * @param validator The validator to apply to each key
  * @return A new validator with per-key validation
  */
-fun <K, V> MapValidator<K, V>.onEachKey(validator: Validator<K, *>) =
-    constrain("kova.map.onEachKey") {
-        validateOnEach(it) { entry ->
-            appendPath("<map key>") { validator.execute(entry.key) }
-        }
-    }
+fun <K, V> MapValidator<K, V>.onEachKey(validator: Validator<K, *>) = constrain("kova.map.onEachKey") { map ->
+    appendPath("<map key>") { map.validateOnEach { validator.execute(it.key) } }
+}
 
 /**
  * Validates each value of the map using the specified validator.
@@ -167,14 +160,11 @@ fun <K, V> MapValidator<K, V>.onEachKey(validator: Validator<K, *>) =
  * @param validator The validator to apply to each value
  * @return A new validator with per-value validation
  */
-fun <K, V> MapValidator<K, V>.onEachValue(validator: Validator<V, *>) = constrain("kova.map.onEachValue") {
-    validateOnEach(it) { entry ->
-        appendPath("[${entry.key}]<map value>") { validator.execute(entry.value) }
-    }
+fun <K, V> MapValidator<K, V>.onEachValue(validator: Validator<V, *>) = constrain("kova.map.onEachValue") { map ->
+    map.validateOnEach { appendPath("[${it.key}]<map value>") { validator.execute(it.value) } }
 }
 
 context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-private fun <K, V, T> validateOnEach(
-    input: Map<K, V>,
-    validate: (Map.Entry<K, V>) -> ValidationResult<T>,
-) = input.entries.forEach { validate(it).bindNelOrAccumulate() }
+private fun <K, V> Map<K, V>.validateOnEach(
+    validate: context(RaiseAccumulate<FailureDetail>) (Map.Entry<K, V>) -> Unit
+) = forEach { accumulating { validate(it) } }

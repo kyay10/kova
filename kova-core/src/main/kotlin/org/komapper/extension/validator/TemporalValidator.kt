@@ -22,8 +22,8 @@ fun <T> TemporalValidator(
         override val clock: Clock = clock
         override val temporalNow: TemporalNow<T> = temporalNow
 
-        context(_: ValidationContext)
-        override fun execute(input: T): ValidationResult<T> = validator.execute(input)
+        context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+        override fun execute(input: T): Pair<T, ValidationContext> = validator.execute(input)
     }
 
 /**

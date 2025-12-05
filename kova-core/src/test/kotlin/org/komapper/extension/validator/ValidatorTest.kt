@@ -2,7 +2,6 @@ package org.komapper.extension.validator
 
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
@@ -14,17 +13,13 @@ class ValidatorTest :
             val validator = Kova.int().min(1).max(10)
 
             test("success") {
-                val result = validator.validate(5)
-                result shouldBe 5
+                shouldNotRaise { validator.validate(5) } shouldBe 5
             }
 
             test("failure") {
-                val ex =
-                    shouldThrow<ValidationException> {
-                        validator.validate(0)
-                    }
-                ex.messages.size shouldBe 1
-                ex.messages[0].content shouldBe "Number 0 must be greater than or equal to 1"
+                shouldRaise { validator.validate(0) }.shouldBeSingleton {
+                    it.message.content shouldBe "Number 0 must be greater than or equal to 1"
+                }
             }
         }
 

@@ -1,9 +1,6 @@
 package org.komapper.extension.validator
 
-import arrow.core.EitherNel
 import arrow.core.NonEmptyList
-
-typealias ValidationResult<T> = EitherNel<FailureDetail, Pair<T, ValidationContext>>
 
 /**
  * Detailed information about a validation failure.

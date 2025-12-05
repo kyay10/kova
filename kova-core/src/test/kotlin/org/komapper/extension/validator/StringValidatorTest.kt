@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.raise
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
@@ -606,7 +607,7 @@ class StringValidatorTest :
                         "1" -> true
                         "false" -> false
                         "0" -> false
-                        else -> Kova.fail("\"$it\" is not a boolean value")
+                        else -> raise("\"$it\" is not a boolean value".failure)
                     }
                 }
 

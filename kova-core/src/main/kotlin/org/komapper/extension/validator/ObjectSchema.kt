@@ -1,11 +1,7 @@
 package org.komapper.extension.validator
 
-import arrow.core.Either
-import arrow.core.getOrElse
 import arrow.core.raise.context.RaiseAccumulate
-import arrow.core.raise.context.accumulating
-import arrow.core.raise.context.bindNelOrAccumulate
-import arrow.core.raise.context.either
+import arrow.core.raise.context.impure
 import kotlin.reflect.KProperty1
 
 /**
@@ -57,60 +53,38 @@ import kotlin.reflect.KProperty1
  * ```
  *
  * @param T The type of object to validate
- * @param block Lambda for defining object-level constraints
  */
 open class ObjectSchema<T : Any> private constructor(
     private val ruleMap: MutableMap<String, Rule>,
-    private val block: ObjectSchemaScope<T>.() -> Unit = {},
+    private val constraint: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit = {},
 ) : Validator<T, T> {
     /**
      * Creates an ObjectSchema with optional object-level constraints.
      *
      * @param block Lambda for defining constraints that validate relationships between properties
      */
-    constructor(block: ObjectSchemaScope<T>.() -> Unit = {}) : this(mutableMapOf(), block)
+    constructor(block: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit = {}) : this(
+        mutableMapOf(),
+        block
+    )
 
-    context(_: ValidationContext)
-    override fun execute(input: T): ValidationResult<T> {
-        val constraints: MutableList<Constraint<T>> = mutableListOf()
-        block(ObjectSchemaScope(constraints))
+    context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+    override fun execute(input: T): Pair<T, ValidationContext> {
         val klass = input::class
         val rootName = klass.qualifiedName ?: klass.simpleName ?: klass.toString()
         addRoot(rootName, input) {
-            return either {
-                accumulateUnless(failFast) {
-                    applyRules(input, ruleMap).bindNelOrAccumulate()
-                    applyConstraints(input, constraints).bindNel()
-                }
-            }
+            for ((key, rule) in ruleMap) accumulating { applyRule(input, key, rule) }
+            constraint(input)
+            return input to contextOf<ValidationContext>()
         }
     }
 
-    context(_: ValidationContext)
-    private fun applyRules(input: T, ruleMap: Map<String, Rule>) = either {
-        accumulateUnless(failFast) {
-            var result = input to contextOf<ValidationContext>()
-            for ((key, rule) in ruleMap) accumulating { result = applyRule(input, key, rule).bindNel() }
-            result
-        }
-    }
-
-    context(_: ValidationContext)
-    private fun applyRule(input: T, key: String, rule: Rule): ValidationResult<T> {
+    context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+    private fun applyRule(input: T, key: String, rule: Rule) {
         val value = rule.transform(input)
-        val validator = rule.choose(input)
-        val (path, context) = addPathChecked(key, value).getOrElse {
-            // If circular reference detected, terminate validation early with success
-            return Either.Right(input to contextOf<ValidationContext>())
-        }
-        return context(context) { validator.execute(path).map { (_, context) -> input to context } }
+        // If circular reference detected, terminate validation early with success
+        impure { addPathChecked(key, value) { rule.choose(input).execute(value) } }
     }
-
-    context(_: ValidationContext)
-    private fun applyConstraints(input: T, constraints: List<Constraint<T>>): ValidationResult<T> = constraints
-        .map { ConstraintValidator(it) }
-        .fold<ConstraintValidator<T>, IdentityValidator<T>>(Validator.success()) { acc, v -> acc + v }
-        .execute(input)
 
     /**
      * Replaces the validator for a specific property.
@@ -227,17 +201,6 @@ internal data class Rule(
     val transform: (Any?) -> Any?,
     val choose: (Any?) -> IdentityValidator<Any?>,
 )
-
-class ObjectSchemaScope<T : Any> internal constructor(
-    private val constraints: MutableList<Constraint<T>>,
-) {
-    fun constrain(
-        id: String,
-        check: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit,
-    ) {
-        constraints.add(Constraint(id, check))
-    }
-}
 
 class ObjectSchemaFactoryScope<T : Any>(
     val validator: IdentityValidator<T>,

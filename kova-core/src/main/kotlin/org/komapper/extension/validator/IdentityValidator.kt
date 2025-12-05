@@ -1,9 +1,7 @@
 package org.komapper.extension.validator
 
-import arrow.core.Either
 import arrow.core.raise.context.RaiseAccumulate
 import arrow.core.raise.context.accumulating
-import arrow.core.raise.context.either
 
 /**
  * Type alias for validators where the input and output types are the same.
@@ -107,7 +105,7 @@ fun <T> IdentityValidator<T>.constrain(
  */
 fun <T> IdentityValidator<T>.onlyIf(condition: (T) -> Boolean) =
     IdentityValidator<T> { input ->
-        if (condition(input)) execute(input) else Either.Right(input to contextOf<ValidationContext>())
+        if (condition(input)) execute(input) else input to contextOf<ValidationContext>()
     }
 
 /**
@@ -132,21 +130,16 @@ fun <T> IdentityValidator<T>.onlyIf(condition: (T) -> Boolean) =
  * @param next The validator to apply next
  * @return A new validator that chains both validators
  */
-fun <T> IdentityValidator<T>.chain(next: IdentityValidator<T>): IdentityValidator<T> =
-    IdentityValidator { input ->
-        addLog("Validator.chain") {
-            either {
-                accumulateUnless(failFast) {
-                    var validationContext = contextOf<ValidationContext>()
-                    var input = input
-                    accumulating {
-                        execute(input).bindNel().also { (newInput, newContext) ->
-                            input = newInput
-                            validationContext = newContext
-                        }
-                    }
-                    context(validationContext) { next.execute(input).bindNel() }
-                }
+fun <T> IdentityValidator<T>.chain(next: IdentityValidator<T>): IdentityValidator<T> = IdentityValidator { input ->
+    addLog("Validator.chain") {
+        var validationContext = contextOf<ValidationContext>()
+        var input = input
+        accumulating {
+            execute(input).also { (newInput, newContext) ->
+                input = newInput
+                validationContext = newContext
             }
         }
+        context(validationContext) { next.execute(input) }
     }
+}

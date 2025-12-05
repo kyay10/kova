@@ -40,9 +40,7 @@ typealias NullableValidator<T, S> = Validator<T?, S?>
  * @return A new nullable validator that accepts null input
  */
 fun <T : Any, S : Any> Validator<T, S>.asNullable(): NullableValidator<T, S> = Validator { input ->
-    addLog("Validator.asNullable") {
-        if (input == null) Either.Right(null to contextOf<ValidationContext>()) else execute(input)
-    }
+    addLog("Validator.asNullable") { if (input == null) null to contextOf<ValidationContext>() else execute(input) }
 }
 
 /**
