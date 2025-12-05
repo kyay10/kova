@@ -1,6 +1,8 @@
 package org.komapper.extension.validator
 
 import arrow.core.raise.context.bindNelOrAccumulate
+import arrow.core.raise.context.either
+import arrow.core.raise.context.withError
 import arrow.core.raise.recover
 
 /**
@@ -114,12 +116,13 @@ fun <C : Collection<*>> CollectionValidator<C>.length(
  */
 fun <E, C : Collection<E>> CollectionValidator<C>.onEach(validator: Validator<E, *>) =
     constrain("kova.collection.onEach") {
-        recover({
-            accumulateUnless(failFast) {
-                for ((i, element) in it.withIndex()) appendPath("[$i]<collection element>") {
-                    validator.execute(element).bindNelOrAccumulate()
+        either {
+            withError(Message::ValidationFailure) {
+                accumulateUnless(failFast) {
+                    for ((i, element) in it.withIndex()) appendPath("[$i]<collection element>") {
+                        validator.execute(element).bindNelOrAccumulate()
+                    }
                 }
-                ConstraintResult.Satisfied
             }
-        }) { details -> ConstraintResult.Violated(Message.ValidationFailure(details)) }
+        }
     }

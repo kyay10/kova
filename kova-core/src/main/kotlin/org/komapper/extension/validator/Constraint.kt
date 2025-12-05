@@ -1,5 +1,9 @@
 package org.komapper.extension.validator
 
+import arrow.core.Either
+import arrow.core.right
+import arrow.core.left
+
 /**
  * Represents a validation constraint that can be applied to a value.
  *
@@ -37,30 +41,16 @@ data class Constraint<T>(
          *
          * Used internally as a default constraint.
          */
-        fun <T> satisfied(): Constraint<T> = Constraint("kova.satisfied") { ConstraintResult.Satisfied }
+        fun <T> satisfied(): Constraint<T> = Constraint("kova.satisfied") { Unit.right() }
     }
 }
 
 /**
  * Result of applying a constraint to a value.
  *
- * Either [Satisfied] if the constraint passes, or [Violated] if it fails.
+ * Either [Unit] if the constraint passes, or [Message] if it fails.
  */
-sealed interface ConstraintResult {
-    /**
-     * Indicates that the constraint was satisfied.
-     */
-    object Satisfied : ConstraintResult
-
-    /**
-     * Indicates that the constraint was violated.
-     *
-     * @property message The error message describing why the constraint failed
-     */
-    data class Violated(
-        val message: Message,
-    ) : ConstraintResult
-}
+typealias ConstraintResult = Either<Message, Unit>
 
 /**
  * Scope available within constraint validation logic.
@@ -81,8 +71,8 @@ sealed interface ConstraintResult {
 /**
  * Evaluates a condition and returns the appropriate constraint result.
  *
- * Returns [ConstraintResult.Satisfied] if the condition is true,
- * or [ConstraintResult.Violated] with the given message if false.
+ * Returns [Unit] if the condition is true,
+ * or [Message] with the given message if false.
  *
  * Example with Message object:
  * ```kotlin
@@ -99,18 +89,13 @@ sealed interface ConstraintResult {
 fun satisfies(
     condition: Boolean,
     message: Message,
-): ConstraintResult =
-    if (condition) {
-        ConstraintResult.Satisfied
-    } else {
-        ConstraintResult.Violated(message)
-    }
+): ConstraintResult = if (condition) Unit.right() else message.left()
 
 /**
  * Evaluates a condition and returns the appropriate constraint result.
  *
- * Returns [ConstraintResult.Satisfied] if the condition is true,
- * or [ConstraintResult.Violated] with the given text message if false.
+ * Returns [Unit] if the condition is true,
+ * or [Message] with the given text message if false.
  *
  * Example with simple string:
  * ```kotlin
@@ -127,9 +112,4 @@ fun satisfies(
 fun satisfies(
     condition: Boolean,
     message: String,
-): ConstraintResult =
-    if (condition) {
-        ConstraintResult.Satisfied
-    } else {
-        ConstraintResult.Violated(Message.Text(content = message))
-    }
+): ConstraintResult = satisfies(condition, Message.Text(content = message))
