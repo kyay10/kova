@@ -1,9 +1,7 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.accumulate
+import arrow.core.raise.context.RaiseAccumulate
 import arrow.core.raise.context.bindNelOrAccumulate
-import arrow.core.raise.context.either
-import arrow.core.raise.context.withError
 
 /**
  * Type alias for map validators.
@@ -33,7 +31,7 @@ fun <K, V> MapValidator<K, V>.min(
     size: Int,
     message: MessageProvider2<Map<K, V>, Int, Int> = Message.resource2("kova.map.min"),
 ) = constrain(message.id) {
-    satisfies(it.size >= size, message(it, it.size, size))
+    satisfies(it.size >= size) { message(it, it.size, size) }
 }
 
 /**
@@ -54,7 +52,7 @@ fun <K, V> MapValidator<K, V>.max(
     size: Int,
     message: MessageProvider2<Map<K, V>, Int, Int> = Message.resource2("kova.map.max"),
 ) = constrain(message.id) {
-    satisfies(it.size <= size, message(it, it.size, size))
+    satisfies(it.size <= size) { message(it, it.size, size) }
 }
 
 /**
@@ -72,7 +70,7 @@ fun <K, V> MapValidator<K, V>.max(
  */
 fun <K, V> MapValidator<K, V>.notEmpty(message: MessageProvider0<Map<K, V>> = Message.resource0("kova.map.notEmpty")) =
     constrain(message.id) {
-        satisfies(it.isNotEmpty(), message(it))
+        satisfies(it.isNotEmpty()) { message(it) }
     }
 
 /**
@@ -93,7 +91,7 @@ fun <K, V> MapValidator<K, V>.length(
     size: Int,
     message: MessageProvider1<Map<K, V>, Int> = Message.resource1("kova.map.length"),
 ) = constrain(message.id) {
-    satisfies(it.size == size, message(it, size))
+    satisfies(it.size == size) { message(it, size) }
 }
 
 /**
@@ -175,10 +173,8 @@ fun <K, V> MapValidator<K, V>.onEachValue(validator: Validator<V, *>) = constrai
     }
 }
 
-context(_: ValidationContext)
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
 private fun <K, V, T> validateOnEach(
     input: Map<K, V>,
     validate: (Map.Entry<K, V>) -> ValidationResult<T>,
-): ConstraintResult = either {
-    accumulate { for (entry in input.entries) validate(entry).bindNelOrAccumulate() }
-}
+) = input.entries.forEach { validate(it).bindNelOrAccumulate() }

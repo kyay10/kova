@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
 import arrow.core.Either
+import arrow.core.raise.context.RaiseAccumulate
 import arrow.core.raise.context.accumulating
 import arrow.core.raise.context.either
 
@@ -36,7 +37,7 @@ fun <T> IdentityValidator<T>.literal(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.literal.single"),
 ) = constrain(message.id) {
-    satisfies(it == value, message(it, value))
+    satisfies(it == value) { message(it, value) }
 }
 
 /**
@@ -57,7 +58,7 @@ fun <T> IdentityValidator<T>.literal(
     values: List<T>,
     message: MessageProvider1<T, List<T>> = Message.resource1("kova.literal.list"),
 ) = constrain(message.id) {
-    satisfies(it in values, message(it, values))
+    satisfies(it in values) { message(it, values) }
 }
 
 /**
@@ -74,12 +75,12 @@ fun <T> IdentityValidator<T>.literal(
  * ```
  *
  * @param id Unique identifier for the constraint (used for error tracking)
- * @param check Constraint logic that produces a [ConstraintResult]
+ * @param check Constraint logic
  * @return A new validator with the constraint applied
  */
 fun <T> IdentityValidator<T>.constrain(
     id: String,
-    check: context(ValidationContext) (T) -> ConstraintResult,
+    check: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit,
 ): IdentityValidator<T> = chain(ConstraintValidator(Constraint(id, check)))
 
 /**

@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
 import arrow.core.EitherNel
+import arrow.core.NonEmptyList
 
 typealias ValidationResult<T> = EitherNel<FailureDetail, Pair<T, ValidationContext>>
 
@@ -26,6 +27,12 @@ sealed interface FailureDetail {
     val path get() = context.path
 }
 
+context(c: ValidationContext)
+val Message.failure: FailureDetail get() = SimpleFailureDetail(c, this)
+
+context(c: ValidationContext)
+val String.failure: FailureDetail get() = Message.Text(this).failure
+
 internal data class SimpleFailureDetail(
     override val context: ValidationContext,
     override val message: Message,
@@ -33,8 +40,8 @@ internal data class SimpleFailureDetail(
 
 internal data class CompositeFailureDetail(
     override val context: ValidationContext,
-    val first: List<FailureDetail>,
-    val second: List<FailureDetail>,
+    val first: NonEmptyList<FailureDetail>,
+    val second: NonEmptyList<FailureDetail>,
 ) : FailureDetail {
     override val message: Message get() {
         val firstMessages = composeMessages(first)

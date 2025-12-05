@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
 import arrow.core.Either
+import arrow.core.raise.context.RaiseAccumulate
 
 /**
  * Type alias for validators that accept nullable input and produce nullable output.
@@ -58,12 +59,12 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(): NullableValidator<T, S> = V
  * ```
  *
  * @param id Unique identifier for the constraint
- * @param check Constraint logic that produces a [ConstraintResult]
+ * @param check Constraint logic
  * @return A new nullable validator with the constraint applied
  */
 fun <T : Any, S : Any> NullableValidator<T, S>.constrain(
     id: String,
-    check: context(ValidationContext) (T?) -> ConstraintResult,
+    check: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T?) -> Unit,
 ): NullableValidator<T, S> = compose(ConstraintValidator(Constraint<T?>(id, check)))
 
 /**

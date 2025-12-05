@@ -1,7 +1,6 @@
 package org.komapper.extension.validator
 
 import arrow.core.raise.context.bindNelOrAccumulate
-import arrow.core.raise.context.either
 
 /**
  * Type alias for collection validators.
@@ -30,7 +29,7 @@ fun <C : Collection<*>> CollectionValidator<C>.min(
     size: Int,
     message: MessageProvider2<C, Int, Int> = Message.resource2("kova.collection.min"),
 ) = constrain(message.id) {
-    satisfies(it.size >= size, message(it, it.size, size))
+    satisfies(it.size >= size) { message(it, it.size, size) }
 }
 
 /**
@@ -51,7 +50,7 @@ fun <C : Collection<*>> CollectionValidator<C>.max(
     size: Int,
     message: MessageProvider2<C, Int, Int> = Message.resource2("kova.collection.max"),
 ) = constrain(message.id) {
-    satisfies(it.size <= size, message(it, it.size, size))
+    satisfies(it.size <= size) { message(it, it.size, size) }
 }
 
 /**
@@ -69,7 +68,7 @@ fun <C : Collection<*>> CollectionValidator<C>.max(
  */
 fun <C : Collection<*>> CollectionValidator<C>.notEmpty(message: MessageProvider0<C> = Message.resource0("kova.collection.notEmpty")) =
     constrain(message.id) {
-        satisfies(it.isNotEmpty(), message(it))
+        satisfies(it.isNotEmpty()) { message(it) }
     }
 
 /**
@@ -90,7 +89,7 @@ fun <C : Collection<*>> CollectionValidator<C>.length(
     size: Int,
     message: MessageProvider1<C, Int> = Message.resource1("kova.collection.length"),
 ) = constrain(message.id) {
-    satisfies(it.size == size, message(it, size))
+    satisfies(it.size == size) { message(it, size) }
 }
 
 /**
@@ -114,11 +113,7 @@ fun <C : Collection<*>> CollectionValidator<C>.length(
  */
 fun <E, C : Collection<E>> CollectionValidator<C>.onEach(validator: Validator<E, *>) =
     constrain("kova.collection.onEach") {
-        either {
-            accumulateUnless(failFast) {
-                for ((i, element) in it.withIndex()) appendPath("[$i]<collection element>") {
-                    validator.execute(element).bindNelOrAccumulate()
-                }
-            }
+        for ((i, element) in it.withIndex()) appendPath("[$i]<collection element>") {
+            validator.execute(element).bindNelOrAccumulate()
         }
     }

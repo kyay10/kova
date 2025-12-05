@@ -1,6 +1,5 @@
 package org.komapper.extension.validator
 
-import arrow.core.NonEmptyList
 import java.text.MessageFormat
 import java.util.ResourceBundle
 
@@ -87,18 +86,6 @@ sealed interface Message {
                 is Iterable<*> -> arg.map { resolveArg(it) }
                 else -> arg
             }
-    }
-
-    /**
-     * A message containing nested validation failures.
-     *
-     * Used internally for composite failures from OR operations.
-     */
-    data class ValidationFailure(
-        val details: NonEmptyList<FailureDetail>,
-        override val id: String? = null,
-    ) : Message {
-        override val content: String get() = details.toString()
     }
 
     companion object : MessageProvider0Factory, MessageProvider1Factory, MessageProvider2Factory

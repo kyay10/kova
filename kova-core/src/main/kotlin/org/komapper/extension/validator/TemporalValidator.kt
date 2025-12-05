@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.RaiseAccumulate
 import java.time.Clock
 import java.time.temporal.Temporal
 
@@ -47,7 +48,7 @@ interface TemporalValidator<T> : IdentityValidator<T>
 
 fun <T> TemporalValidator<T>.constrain(
     id: String,
-    check: context(ValidationContext) (T) -> ConstraintResult,
+    check: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit,
 ): TemporalValidator<T> where T : Temporal, T : Comparable<T> =
     TemporalValidator(
         name = id,
@@ -135,7 +136,7 @@ fun <T> TemporalValidator<T>.future(
     message: MessageProvider0<T> = Message.resource0("kova.temporal.future"),
 ): TemporalValidator<T> where T : Temporal, T : Comparable<T> =
     constrain(message.id) {
-        satisfies(it > temporalNow.now(clock), message(it))
+        satisfies(it > temporalNow.now(clock)) { message(it) }
     }
 
 /**
@@ -147,7 +148,7 @@ fun <T> TemporalValidator<T>.futureOrPresent(
     message: MessageProvider0<T> = Message.resource0("kova.temporal.futureOrPresent"),
 ): TemporalValidator<T> where T : Temporal, T : Comparable<T> =
     constrain(message.id) {
-        satisfies(it >= temporalNow.now(clock), message(it))
+        satisfies(it >= temporalNow.now(clock)) { message(it) }
     }
 
 /**
@@ -159,7 +160,7 @@ fun <T> TemporalValidator<T>.past(
     message: MessageProvider0<T> = Message.resource0("kova.temporal.past"),
 ): TemporalValidator<T> where T : Temporal, T : Comparable<T> =
     constrain(message.id) {
-        satisfies(it < temporalNow.now(clock), message(it))
+        satisfies(it < temporalNow.now(clock)) { message(it) }
     }
 
 /**
@@ -171,7 +172,7 @@ fun <T> TemporalValidator<T>.pastOrPresent(
     message: MessageProvider0<T> = Message.resource0("kova.temporal.pastOrPresent"),
 ): TemporalValidator<T> where T : Temporal, T : Comparable<T> =
     constrain(message.id) {
-        satisfies(it <= temporalNow.now(clock), message(it))
+        satisfies(it <= temporalNow.now(clock)) { message(it) }
     }
 
 /**

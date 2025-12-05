@@ -11,7 +11,7 @@ class MapEntryValidatorTest :
         context("constrain") {
             val validator =
                 Kova.mapEntry<String, String>().constrain("test") {
-                    satisfies(it.key != it.value, "Constraint failed: ${it.key}")
+                    satisfies(it.key != it.value) { "Constraint failed: ${it.key}" }
                 }
 
             test("success") {

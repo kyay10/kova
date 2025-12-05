@@ -2,6 +2,7 @@ package org.komapper.extension.validator
 
 import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.raise.context.RaiseAccumulate
 import arrow.core.raise.context.accumulating
 import arrow.core.raise.context.bindNelOrAccumulate
 import arrow.core.raise.context.either
@@ -232,7 +233,7 @@ class ObjectSchemaScope<T : Any> internal constructor(
 ) {
     fun constrain(
         id: String,
-        check: context(ValidationContext) (T) -> ConstraintResult,
+        check: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit,
     ) {
         constraints.add(Constraint(id, check))
     }

@@ -1,10 +1,10 @@
 package org.komapper.extension.validator
 
-import arrow.core.Either
-import arrow.core.EitherNel
 import arrow.core.right
-import arrow.core.left
-import arrow.core.nel
+import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.context.ensure
+import kotlin.contracts.contract
+import kotlin.experimental.ExperimentalTypeInference
 
 /**
  * Represents a validation constraint that can be applied to a value.
@@ -31,11 +31,11 @@ import arrow.core.nel
  *
  * @param T The type of value this constraint validates
  * @property id A unique identifier for this constraint
- * @property check The validation logic that returns a [ConstraintResult]
+ * @property check The validation logic
  */
 data class Constraint<T>(
     val id: String,
-    val check: context(ValidationContext) (T) -> ConstraintResult,
+    val check: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit,
 ) {
     companion object {
         /**
@@ -48,79 +48,40 @@ data class Constraint<T>(
 }
 
 /**
- * Result of applying a constraint to a value.
- *
- * Either [Unit] if the constraint passes, or [Message] if it fails.
- */
-typealias ConstraintResult = EitherNel<FailureDetail, Unit>
-
-/**
- * Scope available within constraint validation logic.
- *
- * Provides helper methods for evaluating conditions and producing constraint results.
- *
- * Example usage:
- * ```kotlin
- * constrain("range") { context ->
- *     satisfies(
- *         context.input in 1..100,
- *         "Value must be between 1 and 100"
- *     )
- * }
- * ```
- */
-
-/**
- * Evaluates a condition and returns the appropriate constraint result.
- *
- * Returns [Unit] if the condition is true,
- * or [Message] with the given message if false.
+ * Evaluates a condition and raises a failure with the provided message if false.
  *
  * Example with Message object:
  * ```kotlin
- * satisfies(
- *     value > 0,
- *     Message.Resource("custom.positive", value)
- * )
+ * satisfies(value > 0) { Message.Resource("custom.positive", value) }
  * ```
  *
  * @param condition The condition to evaluate
  * @param message The error message to use if the condition is false
  * @return The constraint result
  */
-context(_: ValidationContext)
-fun satisfies(
-    condition: Boolean,
-    message: Message,
-): ConstraintResult = if (condition) Unit.right() else message.details.left()
-
-context(c: ValidationContext)
-private val Message.details
-    get() = when (this) {
-        is Message.Text, is Message.Resource -> SimpleFailureDetail(contextOf<ValidationContext>(), this).nel()
-        is Message.ValidationFailure -> details
-    }
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+inline fun satisfies(condition: Boolean, message: () -> Message) {
+    contract { returns() implies condition }
+    ensure(condition) { message().failure }
+}
 
 /**
- * Evaluates a condition and returns the appropriate constraint result.
- *
- * Returns [Unit] if the condition is true,
- * or [Message] with the given text message if false.
+ * Evaluates a condition and raises a failure with the provided message if false.
  *
  * Example with simple string:
  * ```kotlin
- * satisfies(
- *     value > 0,
- *     "Value must be positive"
- * )
+ * satisfies(value > 0) { "Value must be positive" }
  * ```
  *
  * @param condition The condition to evaluate
  * @param message The error message text to use if the condition is false
  * @return The constraint result
  */
-context(_: ValidationContext)
-fun satisfies(
-    condition: Boolean,
-    message: String,
-): ConstraintResult = satisfies(condition, Message.Text(content = message))
+@JvmName("satisfiesString")
+@OptIn(ExperimentalTypeInference::class)
+@OverloadResolutionByLambdaReturnType
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+inline fun satisfies(condition: Boolean, message: () -> String) {
+    contract { returns() implies condition }
+    ensure(condition) { message().failure }
+}

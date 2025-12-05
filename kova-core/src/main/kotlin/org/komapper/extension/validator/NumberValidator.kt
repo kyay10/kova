@@ -136,7 +136,7 @@ fun <T : Number> IdentityValidator<T>.positive(
     message: MessageProvider0<T> = Message.resource0("kova.number.positive"),
 ): IdentityValidator<T> =
     constrain(message.id) {
-        satisfies(it.toDouble() > 0.0, message(it))
+        satisfies(it.toDouble() > 0.0) { message(it) }
     }
 
 /**
@@ -157,7 +157,7 @@ fun <T: Number> IdentityValidator<T>.negative(
     message: MessageProvider0<T> = Message.resource0("kova.number.negative"),
 ): IdentityValidator<T> =
     constrain(message.id) {
-        satisfies(it.toDouble() < 0.0, message(it))
+        satisfies(it.toDouble() < 0.0) { message(it) }
     }
 
 /**
@@ -178,7 +178,7 @@ fun <T : Number> IdentityValidator<T>.notPositive(
     message: MessageProvider0<T> = Message.resource0("kova.number.notPositive"),
 ): IdentityValidator<T> =
     constrain(message.id) {
-        satisfies(it.toDouble() <= 0.0, message(it))
+        satisfies(it.toDouble() <= 0.0) { message(it) }
     }
 
 /**
@@ -199,5 +199,5 @@ fun <T : Number> IdentityValidator<T>.notNegative(
     message: MessageProvider0<T> = Message.resource0("kova.number.notNegative"),
 ): IdentityValidator<T> =
     constrain(message.id) {
-        satisfies(it.toDouble() >= 0.0, message(it))
+        satisfies(it.toDouble() >= 0.0) { message(it) }
     }
