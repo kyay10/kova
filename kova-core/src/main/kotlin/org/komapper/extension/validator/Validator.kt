@@ -23,13 +23,11 @@ fun interface Validator<IN, OUT> {
      * @param context The validation context tracking state and configuration
      * @return A [ValidationResult] containing either the validated value or failure details
      */
-    fun execute(
-        input: IN,
-        context: ValidationContext,
-    ): ValidationResult<OUT>
+    context(_: ValidationContext)
+    fun execute(input: IN): ValidationResult<OUT>
 
     companion object {
-        fun <T> success() = IdentityValidator<T> { input, context -> Success(input, context) }
+        fun <T> success() = IdentityValidator<T> { input -> Success(input, contextOf<ValidationContext>()) }
     }
 }
 
@@ -55,7 +53,7 @@ fun interface Validator<IN, OUT> {
 fun <IN, OUT> Validator<IN, OUT>.tryValidate(
     input: IN,
     config: ValidationConfig = ValidationConfig(),
-): ValidationResult<OUT> = execute(input, ValidationContext(config = config))
+): ValidationResult<OUT> = context(ValidationContext(config = config)) { execute(input) }
 
 /**
  * Validates the input and returns the validated value, or throws an exception on failure.
@@ -82,11 +80,12 @@ fun <IN, OUT> Validator<IN, OUT>.tryValidate(
 fun <IN, OUT> Validator<IN, OUT>.validate(
     input: IN,
     config: ValidationConfig = ValidationConfig(),
-): OUT =
-    when (val result = execute(input, ValidationContext(config = config))) {
+): OUT = context(ValidationContext(config = config)) {
+    when (val result = execute(input)) {
         is Success<OUT> -> result.value
         is Failure -> throw ValidationException(result.details)
     }
+}
 
 /**
  * Operator overload for [and]. Combines two validators that both must succeed.
@@ -114,23 +113,13 @@ operator fun <IN, OUT> Validator<IN, OUT>.plus(other: Validator<IN, OUT>): Valid
  * @param other The second validator to apply
  * @return A new validator that succeeds only if both validators succeed
  */
-infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator<IN, OUT> {
-    val self = this
-    return Validator { input, context ->
-        val context = context.addLog("Validator.and")
-        when (val selfResult = self.execute(input, context)) {
-            is Success -> {
-                val otherResult = other.execute(input, context)
-                selfResult + otherResult
-            }
+infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
+    addLog("Validator.and") {
+        when (val selfResult = execute(input)) {
+            is Success -> selfResult + other.execute(input)
 
             is Failure -> {
-                if (context.failFast) {
-                    selfResult
-                } else {
-                    val otherResult = other.execute(input, context)
-                    selfResult + otherResult
-                }
+                if (failFast) selfResult else selfResult + other.execute(input)
             }
         }
     }
@@ -152,19 +141,20 @@ infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator
  * @param other The alternative validator to try if this one fails
  * @return A new validator that succeeds if either validator succeeds
  */
-infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<IN, OUT> {
-    val self = this
-    return Validator { input, context ->
-        val context = context.addLog("Validator.or")
-        when (val selfResult = self.execute(input, context)) {
+infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
+    addLog("Validator.or") {
+        when (val selfResult = execute(input)) {
             is Success -> selfResult
             is Failure -> {
-                when (val otherResult = other.execute(input, context)) {
+                when (val otherResult = other.execute(input)) {
                     is Success -> otherResult
-                    is Failure -> {
-                        val composite = CompositeFailureDetail(context, first = selfResult.details, second = otherResult.details)
-                        Failure(composite)
-                    }
+                    is Failure -> Failure(
+                        CompositeFailureDetail(
+                            contextOf<ValidationContext>(),
+                            first = selfResult.details,
+                            second = otherResult.details
+                        )
+                    )
                 }
             }
         }
@@ -186,11 +176,9 @@ infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<
  * @param transform Function to transform the validated value
  * @return A new validator with the transformed output type
  */
-fun <IN, OUT, NEW> Validator<IN, OUT>.map(transform: (OUT) -> NEW): Validator<IN, NEW> {
-    val self = this
-    return Validator { input, context ->
-        val context = context.addLog("Validator.map")
-        when (val result = self.execute(input, context)) {
+fun <IN, OUT, NEW> Validator<IN, OUT>.map(transform: (OUT) -> NEW): Validator<IN, NEW> = Validator { input ->
+    addLog("Validator.map") {
+        when (val result = execute(input)) {
             is Success -> tryRun(result.context) { transform(result.value) }
             is Failure -> result
         }
@@ -211,15 +199,8 @@ fun <IN, OUT, NEW> Validator<IN, OUT>.map(transform: (OUT) -> NEW): Validator<IN
  * @param name The name to add to the validation path
  * @return A new validator that tracks the path
  */
-fun <IN, OUT> Validator<IN, OUT>.name(name: String): Validator<IN, OUT> {
-    val self = this
-    return Validator { input, context ->
-        val context = context.addPath(name, input).addLog("Validator.name(name=$name)")
-        when (val result = self.execute(input, context)) {
-            is Success -> Success(result.value, result.context)
-            is Failure -> result
-        }
-    }
+fun <IN, OUT> Validator<IN, OUT>.name(name: String): Validator<IN, OUT> = Validator { input ->
+    addPath(name, input) { addLog("Validator.name(name=$name)") { execute(input) } }
 }
 
 /**
@@ -253,12 +234,10 @@ fun <IN, OUT, NEW> Validator<OUT, NEW>.compose(before: Validator<IN, OUT>): Vali
  * @param after The validator to apply to the output of this validator
  * @return A new validator that applies both validators in sequence
  */
-fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validator<IN, NEW> {
-    val before = this
-    return Validator { input, context ->
-        val context = context.addLog("Validator.then")
-        when (val result = before.execute(input, context)) {
-            is Success -> after.execute(result.value, result.context)
+fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validator<IN, NEW> = Validator { input ->
+    addLog("Validator.then") {
+        when (val result = execute(input)) {
+            is Success -> context(result.context) { after.execute(result.value) }
             is Failure -> result
         }
     }

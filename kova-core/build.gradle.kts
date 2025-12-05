@@ -9,6 +9,7 @@ kotlin {
         freeCompilerArgs.addAll(
             "-Xcontext-parameters",
             "-opt-in=arrow.core.raise.ExperimentalRaiseAccumulateApi",
+            "-opt-in=kotlin.contracts.ExperimentalContracts",
         )
     }
 }

@@ -27,7 +27,7 @@ import kotlin.reflect.KProperty1
  *
  * object PeriodSchema : ObjectSchema<Period>({
  *     constrain("dateRange") {
- *         satisfies(it.input.startDate <= it.input.endDate, "Start date must be before end date")
+ *         satisfies(it.startDate <= it.endDate, "Start date must be before end date")
  *     }
  * }) {
  *     val startDate = Period::startDate { Kova.localDate() }
@@ -64,74 +64,50 @@ open class ObjectSchema<T : Any> private constructor(
      */
     constructor(block: ObjectSchemaScope<T>.() -> Unit = {}) : this(mutableMapOf(), block)
 
-    override fun execute(
-        input: T,
-        context: ValidationContext,
-    ): ValidationResult<T> {
+    context(_: ValidationContext)
+    override fun execute(input: T): ValidationResult<T> {
         val constraints: MutableList<Constraint<T>> = mutableListOf()
         block(ObjectSchemaScope(constraints))
         val klass = input::class
         val rootName = klass.qualifiedName ?: klass.simpleName ?: klass.toString()
-        val context = context.addRoot(rootName, input)
-        val ruleResult = applyRules(input, context, ruleMap)
-        val constraintResult = applyConstraints(input, context, constraints)
-        if (context.failFast && ruleResult.isFailure()) {
-            return ruleResult
+        addRoot(rootName, input) {
+            val ruleResult = applyRules(input, ruleMap)
+            if (failFast && ruleResult.isFailure()) return ruleResult
+            val constraintResult = applyConstraints(input, constraints)
+            if (failFast && constraintResult.isFailure()) return constraintResult
+            return ruleResult + constraintResult
         }
-        if (context.failFast && constraintResult.isFailure()) {
-            return constraintResult
-        }
-        return ruleResult + constraintResult
     }
 
-    private fun applyRules(
-        input: T,
-        context: ValidationContext,
-        ruleMap: Map<String, Rule>,
-    ): ValidationResult<T> {
+    context(_: ValidationContext)
+    private fun applyRules(input: T, ruleMap: Map<String, Rule>): ValidationResult<T> {
         val results = mutableListOf<ValidationResult<T>>()
         for ((key, rule) in ruleMap) {
-            val result = applyRule(input, context, key, rule)
-            if (result.isFailure() && context.failFast) {
-                return result
-            }
+            val result = applyRule(input, key, rule)
+            if (result.isFailure() && failFast) return result
             results.add(result)
         }
-        return results.fold(ValidationResult.Success(input, context), ValidationResult<T>::plus)
+        return results.fold(ValidationResult.Success(input, contextOf<ValidationContext>()), ValidationResult<T>::plus)
     }
 
-    private fun applyRule(
-        input: T,
-        context: ValidationContext,
-        key: String,
-        rule: Rule,
-    ): ValidationResult<T> {
-        val value = rule.transform(input)
-        val validator = rule.choose(input)
-        val pathResult = context.addPathChecked(key, value)
-        return when (pathResult) {
+    context(_: ValidationContext)
+    private fun applyRule(input: T, key: String, rule: Rule): ValidationResult<T> =
+        when (val pathResult = addPathChecked(key, rule.transform(input))) {
             is ValidationResult.Success -> {
-                when (val result = validator.execute(pathResult.value, pathResult.context)) {
+                when (val result = context(pathResult.context) { rule.choose(input).execute(pathResult.value) }) {
                     is ValidationResult.Success -> ValidationResult.Success(input, result.context)
                     is ValidationResult.Failure -> ValidationResult.Failure(result.details)
                 }
             }
             // If circular reference detected, terminate validation early with success
-            is ValidationResult.Failure -> ValidationResult.Success(input, context)
+            is ValidationResult.Failure -> ValidationResult.Success(input, contextOf<ValidationContext>())
         }
-    }
 
-    private fun applyConstraints(
-        input: T,
-        context: ValidationContext,
-        constraints: List<Constraint<T>>,
-    ): ValidationResult<T> {
-        val validator =
-            constraints
-                .map { ConstraintValidator(it) }
-                .fold(Validator.success<T>() as IdentityValidator<T>) { acc, v -> acc + v }
-        return validator.execute(input, context)
-    }
+    context(_: ValidationContext)
+    private fun applyConstraints(input: T, constraints: List<Constraint<T>>): ValidationResult<T> = constraints
+        .map { ConstraintValidator(it) }
+        .fold<ConstraintValidator<T>, IdentityValidator<T>>(Validator.success()) { acc, v -> acc + v }
+        .execute(input)
 
     /**
      * Replaces the validator for a specific property.
@@ -240,7 +216,8 @@ open class ObjectSchema<T : Any> private constructor(
      * @param block Lambda with ObjectSchemaFactoryScope receiver that returns an ObjectFactory
      * @return An ObjectFactory that validates inputs and constructs the object
      */
-    fun factory(block: ObjectSchemaFactoryScope<T>.() -> ObjectFactory<T>): ObjectFactory<T> = ObjectSchemaFactoryScope(this).block()
+    fun factory(block: ObjectSchemaFactoryScope<T>.() -> ObjectFactory<T>): ObjectFactory<T> =
+        ObjectSchemaFactoryScope(this).block()
 }
 
 internal data class Rule(
@@ -253,7 +230,7 @@ class ObjectSchemaScope<T : Any> internal constructor(
 ) {
     fun constrain(
         id: String,
-        check: ConstraintScope.(ConstraintContext<T>) -> ConstraintResult,
+        check: context(ValidationContext) (T) -> ConstraintResult,
     ) {
         constraints.add(Constraint(id, check))
     }
@@ -285,10 +262,9 @@ class ObjectSchemaFactoryScope<T : Any>(
      * @param value The input value to validate
      * @return An ObjectFactory that executes the validator with the bound value
      */
-    fun <IN, OUT> Validator<IN, OUT>.bind(value: IN): ObjectFactory<OUT> =
-        ObjectFactory {
-            execute(value, it.bindObject(value))
-        }
+    fun <IN, OUT> Validator<IN, OUT>.bind(value: IN): ObjectFactory<OUT> = ObjectFactory {
+        bindObject(value) { execute(value) }
+    }
 
     /**
      * Creates an object factory with 1 ObjectFactory argument.
@@ -423,5 +399,6 @@ class ObjectSchemaFactoryScope<T : Any>(
         arg7: ObjectFactory<T7>,
         arg8: ObjectFactory<T8>,
         arg9: ObjectFactory<T9>,
-    ): ObjectFactory<T> = createObjectFactory(validator, ctor, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+    ): ObjectFactory<T> =
+        createObjectFactory(validator, ctor, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 }

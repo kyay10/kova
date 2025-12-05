@@ -2,17 +2,12 @@ package org.komapper.extension.validator
 
 import kotlin.reflect.KFunction
 
-private fun <T> ValidationContext.shouldReturnEarly(validationResult: ValidationResult<T>): Boolean =
+context(_: ValidationContext)
+private fun <T> shouldReturnEarly(validationResult: ValidationResult<T>): Boolean =
     failFast && validationResult.isFailure()
 
-private fun <T> tryConstruct(
-    context: ValidationContext,
-    validator: IdentityValidator<T>,
-    block: () -> T,
-): ValidationResult<T> {
-    val instance = block()
-    return validator.execute(instance, context)
-}
+context(_: ValidationContext)
+private fun <T> tryConstruct(validator: IdentityValidator<T>, block: () -> T) = validator.execute(block())
 
 private fun <T : Any> createFailure(
     arg: ValidationResult<*>,
@@ -74,7 +69,8 @@ fun interface ObjectFactory<T> {
      * @param context The validation context
      * @return A validation result containing either the constructed object or failure details
      */
-    fun execute(context: ValidationContext): ValidationResult<T>
+    context(_: ValidationContext)
+    fun execute(): ValidationResult<T>
 }
 
 /**
@@ -97,7 +93,7 @@ fun interface ObjectFactory<T> {
  * @return A validation result containing either the created object or failure details
  */
 fun <T> ObjectFactory<T>.tryCreate(config: ValidationConfig = ValidationConfig()): ValidationResult<T> =
-    execute(ValidationContext(config = config))
+    context(ValidationContext(config = config)) { execute() }
 
 /**
  * Validates inputs and creates an object, or throws an exception on failure.
@@ -119,10 +115,8 @@ fun <T> ObjectFactory<T>.tryCreate(config: ValidationConfig = ValidationConfig()
  * @return The created object of type [T]
  * @throws ValidationException if validation fails
  */
-fun <T> ObjectFactory<T>.create(config: ValidationConfig = ValidationConfig()): T {
-    val result = execute(ValidationContext(config = config))
-    return unwrapValidationResult(result)
-}
+fun <T> ObjectFactory<T>.create(config: ValidationConfig = ValidationConfig()): T =
+    unwrapValidationResult(context(ValidationContext(config = config)) { execute() })
 
 internal data class FunctionDesc(
     val name: String,
@@ -160,16 +154,15 @@ internal fun <T0, R> createObjectFactory(
     validator: IdentityValidator<R>,
     ctor: (T0) -> R,
     arg0: ObjectFactory<T0>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess()) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(result0.value)
             }
         } else {
@@ -183,20 +176,19 @@ internal fun <T0, T1, R> createObjectFactory(
     ctor: (T0, T1) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() && result1.isSuccess()) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(result0.value, result1.value)
             }
         } else {
@@ -211,24 +203,23 @@ internal fun <T0, T1, T2, R> createObjectFactory(
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
     arg2: ObjectFactory<T2>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() && result1.isSuccess() && result2.isSuccess()) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(result0.value, result1.value, result2.value)
             }
         } else {
@@ -244,28 +235,27 @@ internal fun <T0, T1, T2, T3, R> createObjectFactory(
     arg1: ObjectFactory<T1>,
     arg2: ObjectFactory<T2>,
     arg3: ObjectFactory<T3>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result3 =
-            arg3.execute(context.addPath(funInfo.get(3), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[3], null) { arg3.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() && result1.isSuccess() && result2.isSuccess() && result3.isSuccess()) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(result0.value, result1.value, result2.value, result3.value)
             }
         } else {
@@ -282,32 +272,31 @@ internal fun <T0, T1, T2, T3, T4, R> createObjectFactory(
     arg2: ObjectFactory<T2>,
     arg3: ObjectFactory<T3>,
     arg4: ObjectFactory<T4>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result3 =
-            arg3.execute(context.addPath(funInfo.get(3), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[3], null) { arg3.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result4 =
-            arg4.execute(context.addPath(funInfo.get(4), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[4], null) { arg4.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() && result1.isSuccess() && result2.isSuccess() && result3.isSuccess() && result4.isSuccess()) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(result0.value, result1.value, result2.value, result3.value, result4.value)
             }
         } else {
@@ -325,33 +314,32 @@ internal fun <T0, T1, T2, T3, T4, T5, R> createObjectFactory(
     arg3: ObjectFactory<T3>,
     arg4: ObjectFactory<T4>,
     arg5: ObjectFactory<T5>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result3 =
-            arg3.execute(context.addPath(funInfo.get(3), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[3], null) { arg3.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result4 =
-            arg4.execute(context.addPath(funInfo.get(4), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[4], null) { arg4.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result5 =
-            arg5.execute(context.addPath(funInfo.get(5), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[5], null) { arg5.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() &&
             result1.isSuccess() &&
@@ -360,7 +348,7 @@ internal fun <T0, T1, T2, T3, T4, T5, R> createObjectFactory(
             result4.isSuccess() &&
             result5.isSuccess()
         ) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(result0.value, result1.value, result2.value, result3.value, result4.value, result5.value)
             }
         } else {
@@ -379,37 +367,36 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, R> createObjectFactory(
     arg4: ObjectFactory<T4>,
     arg5: ObjectFactory<T5>,
     arg6: ObjectFactory<T6>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result3 =
-            arg3.execute(context.addPath(funInfo.get(3), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[3], null) { arg3.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result4 =
-            arg4.execute(context.addPath(funInfo.get(4), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[4], null) { arg4.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result5 =
-            arg5.execute(context.addPath(funInfo.get(5), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[5], null) { arg5.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result6 =
-            arg6.execute(context.addPath(funInfo.get(6), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[6], null) { arg6.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() &&
             result1.isSuccess() &&
@@ -419,7 +406,7 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, R> createObjectFactory(
             result5.isSuccess() &&
             result6.isSuccess()
         ) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(
                     result0.value,
                     result1.value,
@@ -447,41 +434,40 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, R> createObjectFactory(
     arg5: ObjectFactory<T5>,
     arg6: ObjectFactory<T6>,
     arg7: ObjectFactory<T7>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result3 =
-            arg3.execute(context.addPath(funInfo.get(3), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[3], null) { arg3.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result4 =
-            arg4.execute(context.addPath(funInfo.get(4), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[4], null) { arg4.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result5 =
-            arg5.execute(context.addPath(funInfo.get(5), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[5], null) { arg5.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result6 =
-            arg6.execute(context.addPath(funInfo.get(6), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[6], null) { arg6.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result7 =
-            arg7.execute(context.addPath(funInfo.get(7), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[7], null) { arg7.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() &&
             result1.isSuccess() &&
@@ -492,7 +478,7 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, R> createObjectFactory(
             result6.isSuccess() &&
             result7.isSuccess()
         ) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(
                     result0.value,
                     result1.value,
@@ -522,45 +508,44 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, R> createObjectFactory(
     arg6: ObjectFactory<T6>,
     arg7: ObjectFactory<T7>,
     arg8: ObjectFactory<T8>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result3 =
-            arg3.execute(context.addPath(funInfo.get(3), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[3], null) { arg3.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result4 =
-            arg4.execute(context.addPath(funInfo.get(4), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[4], null) { arg4.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result5 =
-            arg5.execute(context.addPath(funInfo.get(5), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[5], null) { arg5.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result6 =
-            arg6.execute(context.addPath(funInfo.get(6), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[6], null) { arg6.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result7 =
-            arg7.execute(context.addPath(funInfo.get(7), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[7], null) { arg7.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result8 =
-            arg8.execute(context.addPath(funInfo.get(8), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[8], null) { arg8.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() &&
             result1.isSuccess() &&
@@ -572,7 +557,7 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, R> createObjectFactory(
             result7.isSuccess() &&
             result8.isSuccess()
         ) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(
                     result0.value,
                     result1.value,
@@ -604,49 +589,48 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, R> createObjectFactory(
     arg7: ObjectFactory<T7>,
     arg8: ObjectFactory<T8>,
     arg9: ObjectFactory<T9>,
-): ObjectFactory<R> {
-    return ObjectFactory {
+): ObjectFactory<R> = ObjectFactory {
         val funInfo = introspectFunction(ctor)
-        val context = it.addRoot(funInfo.name, ctor)
+        addRoot(funInfo.name, ctor) {
         val result0 =
-            arg0.execute(context.addPath(funInfo.get(0), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[0], null) { arg0.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result1 =
-            arg1.execute(context.addPath(funInfo.get(1), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[1], null) { arg1.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result2 =
-            arg2.execute(context.addPath(funInfo.get(2), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[2], null) { arg2.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result3 =
-            arg3.execute(context.addPath(funInfo.get(3), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[3], null) { arg3.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result4 =
-            arg4.execute(context.addPath(funInfo.get(4), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[4], null) { arg4.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result5 =
-            arg5.execute(context.addPath(funInfo.get(5), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[5], null) { arg5.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result6 =
-            arg6.execute(context.addPath(funInfo.get(6), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[6], null) { arg6.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result7 =
-            arg7.execute(context.addPath(funInfo.get(7), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[7], null) { arg7.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result8 =
-            arg8.execute(context.addPath(funInfo.get(8), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[8], null) { arg8.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         val result9 =
-            arg9.execute(context.addPath(funInfo.get(9), null)).let {
-                if (context.shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
+            addPath(funInfo[9], null) { arg9.execute() }.let {
+                if (shouldReturnEarly(it)) return@ObjectFactory createFailure(it) else it
             }
         if (result0.isSuccess() &&
             result1.isSuccess() &&
@@ -659,7 +643,7 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, R> createObjectFactory(
             result8.isSuccess() &&
             result9.isSuccess()
         ) {
-            tryConstruct(context, validator) {
+            tryConstruct(validator) {
                 ctor(
                     result0.value,
                     result1.value,

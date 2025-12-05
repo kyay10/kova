@@ -35,7 +35,7 @@ fun <T> IdentityValidator<T>.literal(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.literal.single"),
 ) = constrain(message.id) {
-    satisfies(it.input == value, message(it, value))
+    satisfies(it == value, message(it, value))
 }
 
 /**
@@ -56,7 +56,7 @@ fun <T> IdentityValidator<T>.literal(
     values: List<T>,
     message: MessageProvider1<T, List<T>> = Message.resource1("kova.literal.list"),
 ) = constrain(message.id) {
-    satisfies(it.input in values, message(it, values))
+    satisfies(it in values, message(it, values))
 }
 
 /**
@@ -68,7 +68,7 @@ fun <T> IdentityValidator<T>.literal(
  * Example:
  * ```kotlin
  * val validator = Kova.string().constrain("alphanumeric") {
- *     satisfies(it.input.all { c -> c.isLetterOrDigit() }, "Must be alphanumeric")
+ *     satisfies(it.all { c -> c.isLetterOrDigit() }, "Must be alphanumeric")
  * }
  * ```
  *
@@ -78,7 +78,7 @@ fun <T> IdentityValidator<T>.literal(
  */
 fun <T> IdentityValidator<T>.constrain(
     id: String,
-    check: ConstraintScope.(ConstraintContext<T>) -> ConstraintResult,
+    check: context(ValidationContext) (T) -> ConstraintResult,
 ): IdentityValidator<T> = chain(ConstraintValidator(Constraint(id, check)))
 
 /**
@@ -104,12 +104,8 @@ fun <T> IdentityValidator<T>.constrain(
  * @return A new validator that conditionally validates
  */
 fun <T> IdentityValidator<T>.onlyIf(condition: (T) -> Boolean) =
-    IdentityValidator<T> { input, context ->
-        if (condition(input)) {
-            execute(input, context)
-        } else {
-            Success(input, context)
-        }
+    IdentityValidator<T> { input ->
+        if (condition(input)) execute(input) else Success(input, contextOf<ValidationContext>())
     }
 
 /**
@@ -135,19 +131,12 @@ fun <T> IdentityValidator<T>.onlyIf(condition: (T) -> Boolean) =
  * @return A new validator that chains both validators
  */
 fun <T> IdentityValidator<T>.chain(next: IdentityValidator<T>): IdentityValidator<T> =
-    IdentityValidator { input, context ->
-        val context = context.addLog("Validator.chain")
-        when (val result = this.execute(input, context)) {
-            is Success -> {
-                next.execute(result.value, result.context)
-            }
+    IdentityValidator { input ->
+        addLog("Validator.chain") {
+            when (val result = this.execute(input)) {
+                is Success -> context(result.context) { next.execute(result.value) }
 
-            is Failure -> {
-                if (context.failFast) {
-                    result
-                } else {
-                    result + next.execute(input, context)
-                }
+                is Failure -> if (failFast) result else result + next.execute(input)
             }
         }
     }

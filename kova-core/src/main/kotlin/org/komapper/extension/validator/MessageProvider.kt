@@ -7,7 +7,7 @@ package org.komapper.extension.validator
  *
  * Example:
  * ```kotlin
- * val notBlankMessage = Message.text0<String> { context ->
+ * val notBlankMessage = Message.text0<String> { input ->
  *     "Value must not be blank"
  * }
  * ```
@@ -19,12 +19,12 @@ interface MessageProvider0<T> {
     val id: String
 
     /**
-     * Creates a message for the given constraint context.
+     * Creates a message for the given input.
      *
-     * @param context The constraint context containing the input value
+     * @param input The input value
      * @return The error message
      */
-    operator fun invoke(context: ConstraintContext<T>): Message
+    operator fun invoke(input: T): Message
 }
 
 /**
@@ -35,8 +35,8 @@ interface MessageProvider0<T> {
  *
  * Example:
  * ```kotlin
- * val minMessage = Message.text1<String, Int> { context, min ->
- *     "Value must be at least $min characters, but was ${context.input.length}"
+ * val minMessage = Message.text1<String, Int> { input, min ->
+ *     "Value must be at least $min characters, but was ${input.length}"
  * }
  * ```
  *
@@ -50,14 +50,11 @@ interface MessageProvider1<T, A1> {
     /**
      * Creates a message for the given constraint context and argument.
      *
-     * @param context The constraint context containing the input value
+     * @param input The input value
      * @param arg1 The first argument to include in the message
      * @return The error message
      */
-    operator fun invoke(
-        context: ConstraintContext<T>,
-        arg1: A1,
-    ): Message
+    operator fun invoke(input: T, arg1: A1): Message
 }
 
 /**
@@ -68,8 +65,8 @@ interface MessageProvider1<T, A1> {
  *
  * Example:
  * ```kotlin
- * val rangeMessage = Message.text2<Int, Int, Int> { context, min, max ->
- *     "Value must be between $min and $max, but was ${context.input}"
+ * val rangeMessage = Message.text2<Int, Int, Int> { input, min, max ->
+ *     "Value must be between $min and $max, but was $input"
  * }
  * ```
  *
@@ -84,16 +81,12 @@ interface MessageProvider2<T, A1, A2> {
     /**
      * Creates a message for the given constraint context and arguments.
      *
-     * @param context The constraint context containing the input value
+     * @param input The input value
      * @param arg1 The first argument to include in the message
      * @param arg2 The second argument to include in the message
      * @return The error message
      */
-    operator fun invoke(
-        context: ConstraintContext<T>,
-        arg1: A1,
-        arg2: A2,
-    ): Message
+    operator fun invoke(input: T, arg1: A1, arg2: A2): Message
 }
 
 /**
@@ -118,15 +111,11 @@ interface MessageProvider0Factory {
      * @param get Function that generates the message text
      * @return A message provider
      */
-    fun <T> text0(
-        id: String = "",
-        get: (ConstraintContext<T>) -> String,
-    ): MessageProvider0<T> =
-        object : MessageProvider0<T> {
-            override val id: String = id
+    fun <T> text0(id: String = "", get: (T) -> String): MessageProvider0<T> = object : MessageProvider0<T> {
+        override val id: String = id
 
-            override fun invoke(context: ConstraintContext<T>): Message = Message.Text(id, get(context))
-        }
+        override fun invoke(input: T): Message = Message.Text(id, get(input))
+    }
 
     /**
      * Creates a resource bundle-based message provider with no arguments.
@@ -141,12 +130,11 @@ interface MessageProvider0Factory {
      * @param id The resource bundle key
      * @return A message provider that loads messages from resources
      */
-    fun <T> resource0(id: String): MessageProvider0<T> =
-        object : MessageProvider0<T> {
-            override val id: String = id
+    fun <T> resource0(id: String): MessageProvider0<T> = object : MessageProvider0<T> {
+        override val id: String = id
 
-            override fun invoke(context: ConstraintContext<T>): Message = Message.Resource(id, context.input)
-        }
+        override fun invoke(input: T): Message = Message.Resource(id, input)
+    }
 }
 
 /**
@@ -174,17 +162,11 @@ interface MessageProvider1Factory {
      * @param get Function that generates the message text from context and argument
      * @return A message provider
      */
-    fun <T, A1> text1(
-        id: String = "",
-        get: (ConstraintContext<T>, A1) -> String,
-    ): MessageProvider1<T, A1> =
+    fun <T, A1> text1(id: String = "", get: (T, A1) -> String): MessageProvider1<T, A1> =
         object : MessageProvider1<T, A1> {
             override val id: String = id
 
-            override fun invoke(
-                context: ConstraintContext<T>,
-                arg1: A1,
-            ): Message = Message.Text(id, get(context, arg1))
+            override fun invoke(input: T, arg1: A1): Message = Message.Text(id, get(input, arg1))
         }
 
     /**
@@ -209,15 +191,11 @@ interface MessageProvider1Factory {
      * @param id The resource bundle key
      * @return A message provider that loads messages from resources
      */
-    fun <T, A1> resource1(id: String): MessageProvider1<T, A1> =
-        object : MessageProvider1<T, A1> {
-            override val id: String = id
+    fun <T, A1> resource1(id: String): MessageProvider1<T, A1> = object : MessageProvider1<T, A1> {
+        override val id: String = id
 
-            override fun invoke(
-                context: ConstraintContext<T>,
-                arg1: A1,
-            ): Message = Message.Resource(id, context.input, arg1)
-        }
+        override fun invoke(input: T, arg1: A1): Message = Message.Resource(id, input, arg1)
+    }
 }
 
 /**
@@ -246,18 +224,11 @@ interface MessageProvider2Factory {
      * @param get Function that generates the message text from context and arguments
      * @return A message provider
      */
-    fun <T, A1, A2> text2(
-        id: String = "",
-        get: (ConstraintContext<T>, A1, A2) -> String,
-    ): MessageProvider2<T, A1, A2> =
+    fun <T, A1, A2> text2(id: String = "", get: (T, A1, A2) -> String): MessageProvider2<T, A1, A2> =
         object : MessageProvider2<T, A1, A2> {
             override val id: String = id
 
-            override fun invoke(
-                context: ConstraintContext<T>,
-                arg1: A1,
-                arg2: A2,
-            ): Message = Message.Text(id, get(context, arg1, arg2))
+            override fun invoke(input: T, arg1: A1, arg2: A2): Message = Message.Text(id, get(input, arg1, arg2))
         }
 
     /**
@@ -283,14 +254,9 @@ interface MessageProvider2Factory {
      * @param id The resource bundle key
      * @return A message provider that loads messages from resources
      */
-    fun <T, A1, A2> resource2(id: String): MessageProvider2<T, A1, A2> =
-        object : MessageProvider2<T, A1, A2> {
-            override val id: String = id
+    fun <T, A1, A2> resource2(id: String): MessageProvider2<T, A1, A2> = object : MessageProvider2<T, A1, A2> {
+        override val id: String = id
 
-            override fun invoke(
-                context: ConstraintContext<T>,
-                arg1: A1,
-                arg2: A2,
-            ): Message = Message.Resource(id, context.input, arg1, arg2)
-        }
+        override fun invoke(input: T, arg1: A1, arg2: A2): Message = Message.Resource(id, input, arg1, arg2)
+    }
 }

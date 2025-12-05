@@ -59,10 +59,11 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(defaultValue: S): WithDefaultN
  * @return A new validator that accepts null input but produces non-nullable output
  */
 fun <T : Any, S : Any> Validator<T, S>.asNullable(withDefault: () -> S): WithDefaultNullableValidator<T, S> =
-    Validator { input, context ->
+    Validator { input ->
         val defaultValue = withDefault()
-        val context = context.addLog("Validator.asNullable(defaultValue=$defaultValue)")
-        if (input == null) Success(defaultValue, context) else execute(input, context)
+        addLog("Validator.asNullable(defaultValue=$defaultValue)") {
+            if (input == null) Success(defaultValue, contextOf<ValidationContext>()) else execute(input)
+        }
     }
 
 /**
@@ -75,7 +76,7 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(withDefault: () -> S): WithDef
  * val validator = Kova.string().asNullable("default")
  *     .constrain("custom") {
  *         satisfies(
- *             it.input == null || it.input.length >= 3,
+ *             it == null || it.length >= 3,
  *             "Must be null or at least 3 chars"
  *         )
  *     }
@@ -87,7 +88,7 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(withDefault: () -> S): WithDef
  */
 fun <T : Any, S : Any> WithDefaultNullableValidator<T, S>.constrain(
     id: String,
-    check: ConstraintScope.(ConstraintContext<T?>) -> ConstraintResult,
+    check: context(ValidationContext) (T?) -> ConstraintResult,
 ): WithDefaultNullableValidator<T, S> = compose(ConstraintValidator(Constraint(id, check)))
 
 /**

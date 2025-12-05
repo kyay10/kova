@@ -38,9 +38,10 @@ typealias NullableValidator<T, S> = Validator<T?, S?>
  *
  * @return A new nullable validator that accepts null input
  */
-fun <T : Any, S : Any> Validator<T, S>.asNullable(): NullableValidator<T, S> = Validator { input, context ->
-    val context = context.addLog("Validator.asNullable")
-    if (input == null) Success(null, context) else this.execute(input, context)
+fun <T : Any, S : Any> Validator<T, S>.asNullable(): NullableValidator<T, S> = Validator { input ->
+    addLog("Validator.asNullable") {
+        if (input == null) Success(null, contextOf<ValidationContext>()) else execute(input)
+    }
 }
 
 /**
@@ -52,7 +53,7 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(): NullableValidator<T, S> = V
  * ```kotlin
  * val validator = Kova.string().asNullable()
  *     .constrain("custom") {
- *         satisfies(it.input == null || it.input.length >= 3, "Must be null or at least 3 chars")
+ *         satisfies(it == null || it.length >= 3, "Must be null or at least 3 chars")
  *     }
  * ```
  *
@@ -62,8 +63,8 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(): NullableValidator<T, S> = V
  */
 fun <T : Any, S : Any> NullableValidator<T, S>.constrain(
     id: String,
-    check: ConstraintScope.(ConstraintContext<T?>) -> ConstraintResult,
-): NullableValidator<T, S> = compose(ConstraintValidator(Constraint(id, check)))
+    check: context(ValidationContext) (T?) -> ConstraintResult,
+): NullableValidator<T, S> = compose(ConstraintValidator(Constraint<T?>(id, check)))
 
 /**
  * Validates that the input is null.
@@ -178,7 +179,8 @@ fun <T : Any, S : Any> NullableValidator<T, S>.withDefault(provide: () -> S): Wi
  * @param other The non-nullable validator to combine with
  * @return A new nullable validator combining both
  */
-operator fun <T : Any, S : Any> NullableValidator<T, S>.plus(other: Validator<T, S>): NullableValidator<T, S> = and(other)
+operator fun <T : Any, S : Any> NullableValidator<T, S>.plus(other: Validator<T, S>): NullableValidator<T, S> =
+    and(other)
 
 /**
  * Combines this nullable validator with a non-nullable validator using logical AND.
@@ -197,7 +199,8 @@ operator fun <T : Any, S : Any> NullableValidator<T, S>.plus(other: Validator<T,
  * @param other The non-nullable validator to combine with
  * @return A new nullable validator combining both
  */
-fun <T : Any, S : Any> NullableValidator<T, S>.and(other: Validator<T, S>): NullableValidator<T, S> = and(other.asNullable())
+fun <T : Any, S : Any> NullableValidator<T, S>.and(other: Validator<T, S>): NullableValidator<T, S> =
+    and(other.asNullable())
 
 /**
  * Combines this nullable validator with a non-nullable validator using logical OR.
@@ -216,7 +219,8 @@ fun <T : Any, S : Any> NullableValidator<T, S>.and(other: Validator<T, S>): Null
  * @param other The non-nullable validator to combine with
  * @return A new nullable validator combining both
  */
-fun <T : Any, S : Any> NullableValidator<T, S>.or(other: Validator<T, S>): NullableValidator<T, S> = or(other.asNullable())
+fun <T : Any, S : Any> NullableValidator<T, S>.or(other: Validator<T, S>): NullableValidator<T, S> =
+    or(other.asNullable())
 
 /**
  * Composes this nullable validator with a non-nullable validator applied before it.
@@ -248,4 +252,5 @@ fun <T : Any, S : Any, U : Any> NullableValidator<T, S>.compose(other: Validator
  * @param other The non-nullable validator to apply after this one
  * @return A new nullable validator with both validators chained
  */
-fun <T : Any, S : Any, U : Any> NullableValidator<T, S>.then(other: Validator<S, U>): NullableValidator<T, U> = then(other.asNullable())
+fun <T : Any, S : Any, U : Any> NullableValidator<T, S>.then(other: Validator<S, U>): NullableValidator<T, U> =
+    then(other.asNullable())

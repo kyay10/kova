@@ -1,5 +1,8 @@
 package org.komapper.extension.validator
 
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
+
 /**
  * Context object that tracks the state of validation execution.
  *
@@ -17,13 +20,15 @@ data class ValidationContext(
     val path: Path = Path(name = "", obj = null, parent = null),
     val logs: List<String> = emptyList(),
     val config: ValidationConfig = ValidationConfig(),
-) {
-    /** Whether validation should stop at the first failure. */
-    val failFast: Boolean get() = config.failFast
+)
 
-    /** Whether debug logging of validator operations is enabled. */
-    val logging: Boolean get() = config.logging
-}
+/** Whether validation should stop at the first failure. */
+context(c: ValidationContext)
+val failFast: Boolean get() = c.config.failFast
+
+/** Whether debug logging of validator operations is enabled. */
+context(c: ValidationContext)
+val logging: Boolean get() = c.config.logging
 
 /**
  * Configuration settings for validation execution.
@@ -43,64 +48,64 @@ data class ValidationConfig(
     val logging: Boolean = false,
 )
 
-fun ValidationContext.addRoot(
+context(c: ValidationContext)
+inline fun <R> addRoot(
     name: String,
     obj: Any?,
-): ValidationContext =
-    if (root.isEmpty()) {
-        // initialize root
-        copy(root = name, path = Path(name = "", obj = obj, parent = null))
-    } else {
-        this
-    }
+    block: context(ValidationContext) () -> R
+): R {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    // initialize root
+    return block(if (c.root.isEmpty()) c.copy(root = name, path = Path(name = "", obj = obj, parent = null)) else c)
+}
 
-fun ValidationContext.addPath(
+context(c: ValidationContext)
+inline fun <R> addPath(
     name: String,
     obj: Any?,
-): ValidationContext {
-    val parent = this.path
-    val path =
-        parent.copy(
-            name = name,
-            obj = obj,
-            parent = parent,
-        )
-    return copy(path = path)
+    block: context(ValidationContext) () -> R
+): R {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    return block(c.copy(path = c.path.copy(name = name, obj = obj, parent = c.path)))
 }
 
-fun ValidationContext.bindObject(obj: Any?): ValidationContext {
-    val path = this.path.copy(obj = obj)
-    return copy(path = path)
+context(c: ValidationContext)
+inline fun <R> bindObject(obj: Any?, block: context(ValidationContext) () -> R): R {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    return block(c.copy(path = c.path.copy(obj = obj)))
 }
 
-fun <T> ValidationContext.addPathChecked(
+context(c: ValidationContext)
+fun <T> addPathChecked(
     name: String,
     obj: T,
 ): ValidationResult<T> {
-    val parent = this.path
+    val parent = c.path
     // Check for circular reference
     if (obj != null && parent.containsObject(obj)) {
         // Return failure to signal circular reference detection
         // The caller will convert this to success and terminate validation
         return ValidationResult.Failure(
             SimpleFailureDetail(
-                this,
+                c,
                 Message.Text("Circular reference detected."),
             ),
         )
     }
-    return ValidationResult.Success(obj, addPath(name, obj))
+    return addPath(name, obj) { ValidationResult.Success(obj, contextOf<ValidationContext>()) }
 }
 
-fun ValidationContext.addLog(log: String): ValidationContext = if (logging) copy(logs = this.logs + log) else this
-
-fun ValidationContext.appendPath(text: String): ValidationContext {
-    val path = this.path.copy(name = this.path.name + text)
-    return copy(path = path)
+context(c: ValidationContext)
+inline fun <R> addLog(log: String, block: context(ValidationContext) () -> R): R {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    return block(if (logging) c.copy(logs = c.logs + log) else c)
 }
 
-fun <T> ValidationContext.createConstraintContext(input: T): ConstraintContext<T> =
-    ConstraintContext(input = input, validationContext = this)
+context(c: ValidationContext)
+inline fun <R> appendPath(text: String, block: context(ValidationContext) () -> R): R {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    return block(c.copy(path = c.path.copy(name = c.path.name + text)))
+}
 
 /**
  * Represents a path through the object graph during validation.
