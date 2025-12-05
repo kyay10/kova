@@ -1,6 +1,6 @@
 package org.komapper.extension.validator
 
-import org.komapper.extension.validator.ValidationResult.Success
+import arrow.core.Either
 
 /**
  * Type alias for validators that accept nullable input and produce nullable output.
@@ -40,7 +40,7 @@ typealias NullableValidator<T, S> = Validator<T?, S?>
  */
 fun <T : Any, S : Any> Validator<T, S>.asNullable(): NullableValidator<T, S> = Validator { input ->
     addLog("Validator.asNullable") {
-        if (input == null) Success(null, contextOf<ValidationContext>()) else execute(input)
+        if (input == null) Either.Right(null to contextOf<ValidationContext>()) else execute(input)
     }
 }
 

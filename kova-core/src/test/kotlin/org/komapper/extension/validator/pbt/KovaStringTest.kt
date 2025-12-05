@@ -1,8 +1,8 @@
 package org.komapper.extension.validator.pbt
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.booleans.shouldBeFalse
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.choice
 import io.kotest.property.arbitrary.constant
@@ -13,7 +13,6 @@ import io.kotest.property.arbitrary.string
 import io.kotest.property.checkAll
 import org.komapper.extension.validator.Kova
 import org.komapper.extension.validator.endsWith
-import org.komapper.extension.validator.isSuccess
 import org.komapper.extension.validator.length
 import org.komapper.extension.validator.max
 import org.komapper.extension.validator.min
@@ -30,17 +29,17 @@ class KovaStringTest :
 
                 // Test exactly at boundary
                 val atBoundary = "a".repeat(minLength)
-                validator.tryValidate(atBoundary).isSuccess().shouldBeTrue()
+                validator.tryValidate(atBoundary).shouldBeRight()
 
                 // Test one below boundary (if possible)
                 if (minLength > 0) {
                     val belowBoundary = "a".repeat(minLength - 1)
-                    validator.tryValidate(belowBoundary).isSuccess().shouldBeFalse()
+                    validator.tryValidate(belowBoundary).shouldBeLeft()
                 }
 
                 // Test above boundary
                 val aboveBoundary = "a".repeat(minLength + 1)
-                validator.tryValidate(aboveBoundary).isSuccess().shouldBeTrue()
+                validator.tryValidate(aboveBoundary).shouldBeRight()
             }
         }
 
@@ -50,16 +49,16 @@ class KovaStringTest :
 
                 // Test exactly at boundary
                 val atBoundary = "a".repeat(maxLength)
-                validator.tryValidate(atBoundary).isSuccess().shouldBeTrue()
+                validator.tryValidate(atBoundary).shouldBeRight()
 
                 // Test one above boundary
                 val aboveBoundary = "a".repeat(maxLength + 1)
-                validator.tryValidate(aboveBoundary).isSuccess().shouldBeFalse()
+                validator.tryValidate(aboveBoundary).shouldBeLeft()
 
                 // Test below boundary
                 if (maxLength > 0) {
                     val belowBoundary = "a".repeat(maxLength - 1)
-                    validator.tryValidate(belowBoundary).isSuccess().shouldBeTrue()
+                    validator.tryValidate(belowBoundary).shouldBeRight()
                 }
             }
         }
@@ -71,21 +70,21 @@ class KovaStringTest :
 
                     // Test valid range - middle
                     val validLength = (min + max) / 2
-                    validator.tryValidate("a".repeat(validLength)).isSuccess().shouldBeTrue()
+                    validator.tryValidate("a".repeat(validLength)).shouldBeRight()
 
                     // Test valid range - at min boundary
-                    validator.tryValidate("a".repeat(min)).isSuccess().shouldBeTrue()
+                    validator.tryValidate("a".repeat(min)).shouldBeRight()
 
                     // Test valid range - at max boundary
-                    validator.tryValidate("a".repeat(max)).isSuccess().shouldBeTrue()
+                    validator.tryValidate("a".repeat(max)).shouldBeRight()
 
                     // Test below range
                     if (min > 0) {
-                        validator.tryValidate("a".repeat(min - 1)).isSuccess().shouldBeFalse()
+                        validator.tryValidate("a".repeat(min - 1)).shouldBeLeft()
                     }
 
                     // Test above range
-                    validator.tryValidate("a".repeat(max + 1)).isSuccess().shouldBeFalse()
+                    validator.tryValidate("a".repeat(max + 1)).shouldBeLeft()
                 }
             }
         }
@@ -96,8 +95,7 @@ class KovaStringTest :
                     .string()
                     .notBlank()
                     .tryValidate(input)
-                    .isSuccess()
-                    .shouldBeTrue()
+                    .shouldBeRight()
             }
         }
 
@@ -116,8 +114,7 @@ class KovaStringTest :
                     .string()
                     .notBlank()
                     .tryValidate(input)
-                    .isSuccess()
-                    .shouldBeFalse()
+                    .shouldBeLeft()
             }
         }
 
@@ -128,8 +125,7 @@ class KovaStringTest :
                     .string()
                     .length(targetLength)
                     .tryValidate(input)
-                    .isSuccess()
-                    .shouldBeTrue()
+                    .shouldBeRight()
             }
         }
 
@@ -141,8 +137,7 @@ class KovaStringTest :
                         .string()
                         .length(targetLength)
                         .tryValidate(input)
-                        .isSuccess()
-                        .shouldBeFalse()
+                        .shouldBeLeft()
                 }
             }
         }
@@ -154,8 +149,7 @@ class KovaStringTest :
                     .string()
                     .startsWith(prefix)
                     .tryValidate(input)
-                    .isSuccess()
-                    .shouldBeTrue()
+                    .shouldBeRight()
             }
         }
 
@@ -166,8 +160,7 @@ class KovaStringTest :
                         .string()
                         .startsWith(prefix)
                         .tryValidate(input)
-                        .isSuccess()
-                        .shouldBeFalse()
+                        .shouldBeLeft()
                 }
             }
         }
@@ -179,8 +172,7 @@ class KovaStringTest :
                     .string()
                     .endsWith(suffix)
                     .tryValidate(input)
-                    .isSuccess()
-                    .shouldBeTrue()
+                    .shouldBeRight()
             }
         }
 
@@ -191,8 +183,7 @@ class KovaStringTest :
                         .string()
                         .endsWith(suffix)
                         .tryValidate(input)
-                        .isSuccess()
-                        .shouldBeFalse()
+                        .shouldBeLeft()
                 }
             }
         }

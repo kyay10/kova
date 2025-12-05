@@ -21,6 +21,7 @@ repositories {
 dependencies {
     implementation(libs.arrow.core)
     testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotest.arrow)
     testImplementation(libs.kotest.property)
     testImplementation(libs.kotest.framework.engine)
 }

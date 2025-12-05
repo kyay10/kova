@@ -1,5 +1,8 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.bindNelOrAccumulate
+import arrow.core.raise.recover
+
 /**
  * Type alias for collection validators.
  *
@@ -111,14 +114,12 @@ fun <C : Collection<*>> CollectionValidator<C>.length(
  */
 fun <E, C : Collection<E>> CollectionValidator<C>.onEach(validator: Validator<E, *>) =
     constrain("kova.collection.onEach") {
-        val failures = mutableListOf<ValidationResult.Failure>()
-        for ((i, element) in it.withIndex()) appendPath("[$i]<collection element>") {
-            val result = validator.execute(element)
-            if (result.isFailure()) {
-                failures.add(result)
-                if (failFast) break
+        recover({
+            accumulateUnless(failFast) {
+                for ((i, element) in it.withIndex()) appendPath("[$i]<collection element>") {
+                    validator.execute(element).bindNelOrAccumulate()
+                }
+                ConstraintResult.Satisfied
             }
-        }
-        val failureDetails = failures.flatMap { failure -> failure.details }
-        satisfies(failureDetails.isEmpty(), Message.ValidationFailure(details = failureDetails))
+        }) { details -> ConstraintResult.Violated(Message.ValidationFailure(details)) }
     }

@@ -1,6 +1,9 @@
 package org.komapper.extension.validator
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class ComparableValidatorTest :
@@ -10,16 +13,14 @@ class ComparableValidatorTest :
             val validator = Kova.uInt().max(2u) + Kova.uInt().max(3u)
 
             test("success") {
-                val result = validator.tryValidate(1u)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 1u
+                validator.tryValidate(1u).shouldBeRight().first shouldBe 1u
             }
 
             test("failure") {
-                val result = validator.tryValidate(5u)
-                result.messages.size shouldBe 2
-                result.messages[0].content shouldBe "Number 5 must be less than or equal to 2"
-                result.messages[1].content shouldBe "Number 5 must be less than or equal to 3"
+                val details = validator.tryValidate(5u).shouldBeLeft()
+                details.size shouldBe 2
+                details[0].message.content shouldBe "Number 5 must be less than or equal to 2"
+                details[1].message.content shouldBe "Number 5 must be less than or equal to 3"
             }
         }
 
@@ -30,13 +31,13 @@ class ComparableValidatorTest :
                 }
 
             test("success") {
-                val result = validator.tryValidate(10u)
-                result.isSuccess().mustBeTrue()
+                validator.tryValidate(10u).shouldBeRight()
             }
 
             test("failure") {
-                val result = validator.tryValidate(20u)
-                result.messages.single().content shouldBe "Constraint failed"
+                validator.tryValidate(20u).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Constraint failed"
+                }
             }
         }
     })

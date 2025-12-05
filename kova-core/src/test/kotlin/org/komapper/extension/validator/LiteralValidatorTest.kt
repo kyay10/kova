@@ -1,6 +1,10 @@
 package org.komapper.extension.validator
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.booleans.shouldBeTrue
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class LiteralValidatorTest :
@@ -10,16 +14,13 @@ class LiteralValidatorTest :
             val validator = Kova.literal(true)
 
             test("success") {
-                val result = validator.tryValidate(true)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe true
+                validator.tryValidate(true).shouldBeRight().first.shouldBeTrue()
             }
 
             test("failure") {
-                val result = validator.tryValidate(false)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Value false must be true"
+                validator.tryValidate(false).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Value false must be true"
+                }
             }
         }
 
@@ -27,16 +28,13 @@ class LiteralValidatorTest :
             val validator = Kova.literal(123)
 
             test("success") {
-                val result = validator.tryValidate(123)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 123
+                validator.tryValidate(123).shouldBeRight().first shouldBe 123
             }
 
             test("failure") {
-                val result = validator.tryValidate(456)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Value 456 must be 123"
+                validator.tryValidate(456).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Value 456 must be 123"
+                }
             }
         }
 
@@ -44,16 +42,13 @@ class LiteralValidatorTest :
             val validator = Kova.literal("abc")
 
             test("success") {
-                val result = validator.tryValidate("abc")
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe "abc"
+                validator.tryValidate("abc").shouldBeRight().first shouldBe "abc"
             }
 
             test("failure") {
-                val result = validator.tryValidate("de")
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Value de must be abc"
+                validator.tryValidate("de").shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Value de must be abc"
+                }
             }
         }
 
@@ -61,16 +56,13 @@ class LiteralValidatorTest :
             val validator = Kova.literal("aaa", "bbb", "ccc")
 
             test("success") {
-                val result = validator.tryValidate("bbb")
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe "bbb"
+                validator.tryValidate("bbb").shouldBeRight().first shouldBe "bbb"
             }
 
             test("failure") {
-                val result = validator.tryValidate("ddd")
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Value ddd must be one of [aaa, bbb, ccc]"
+                validator.tryValidate("ddd").shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Value ddd must be one of [aaa, bbb, ccc]"
+                }
             }
         }
 
@@ -78,16 +70,13 @@ class LiteralValidatorTest :
             val validator = Kova.literal(listOf("aaa", "bbb", "ccc"))
 
             test("success") {
-                val result = validator.tryValidate("bbb")
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe "bbb"
+                validator.tryValidate("bbb").shouldBeRight().first shouldBe "bbb"
             }
 
             test("failure") {
-                val result = validator.tryValidate("ddd")
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Value ddd must be one of [aaa, bbb, ccc]"
+                validator.tryValidate("ddd").shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Value ddd must be one of [aaa, bbb, ccc]"
+                }
             }
         }
     })

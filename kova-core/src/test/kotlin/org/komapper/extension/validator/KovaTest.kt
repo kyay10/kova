@@ -1,6 +1,9 @@
 package org.komapper.extension.validator
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class KovaTest :
@@ -10,15 +13,11 @@ class KovaTest :
             val validator = Kova.string().min(3).length(4)
 
             test("failFast = false") {
-                val result = validator.tryValidate("ab")
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 2
+                validator.tryValidate("ab").shouldBeLeft().size shouldBe 2
             }
 
             test("failFast = true") {
-                val result = validator.tryValidate("ab", ValidationConfig(failFast = true))
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
+                validator.tryValidate("ab", ValidationConfig(failFast = true)).shouldBeLeft().shouldBeSingleton()
             }
         }
 
@@ -26,15 +25,11 @@ class KovaTest :
             val validator = Kova.string().min(3).asNullable() + Kova.string().length(4).asNullable()
 
             test("failFast = false") {
-                val result = validator.tryValidate("ab")
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 2
+                validator.tryValidate("ab").shouldBeLeft().size shouldBe 2
             }
 
             test("failFast = true") {
-                val result = validator.tryValidate("ab", ValidationConfig(failFast = true))
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
+                validator.tryValidate("ab", ValidationConfig(failFast = true)).shouldBeLeft().shouldBeSingleton()
             }
         }
 
@@ -42,13 +37,11 @@ class KovaTest :
             val validator = Kova.boolean()
 
             test("success - true") {
-                val result = validator.tryValidate(true)
-                result.isSuccess().mustBeTrue()
+                validator.tryValidate(true).shouldBeRight()
             }
 
             test("success - false") {
-                val result = validator.tryValidate(false)
-                result.isSuccess().mustBeTrue()
+                validator.tryValidate(false).shouldBeRight()
             }
         }
 
@@ -75,26 +68,21 @@ class KovaTest :
 
             test("success - null") {
                 val userFactory = userSchema.bind(null, null)
-                val result = userFactory.tryCreate()
-                result.isSuccess().mustBeTrue(result.toString())
-                result.value shouldBe User(null, null)
+                userFactory.tryCreate().shouldBeRight().first shouldBe User(null, null)
             }
 
             test("success - non-null") {
                 val userFactory = userSchema.bind("", 0)
-                val result = userFactory.tryCreate()
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe User("", 0)
+                userFactory.tryCreate().shouldBeRight().first shouldBe User("", 0)
             }
 
             test("failure") {
                 val userFactory = userSchema.bind("abc", 10)
-                val result = userFactory.tryCreate()
-                result.isFailure().mustBeTrue(result.messages.toString())
-                result.messages.size shouldBe 2
-                result.messages[0].content shouldBe
+                val details = userFactory.tryCreate().shouldBeLeft()
+                details.size shouldBe 2
+                details[0].message.content shouldBe
                     "at least one constraint must be satisfied: [[Value abc must be null], [Value abc must be ]]"
-                result.messages[1].content shouldBe
+                details[1].message.content shouldBe
                     "at least one constraint must be satisfied: [[Value 10 must be null], [Value 10 must be 0]]"
             }
         }
@@ -114,35 +102,27 @@ class KovaTest :
             val requestKeyIsNotNullAndMin3 = requestKey.then(notNullAndMin3)
 
             test("success - requestKeyIsNotNull") {
-                val result = requestKeyIsNotNull.tryValidate(Request(mapOf("key" to "abc")))
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe "abc"
+                requestKeyIsNotNull.tryValidate(Request(mapOf("key" to "abc"))).shouldBeRight().first shouldBe "abc"
             }
 
             test("failure - requestKeyIsNotNull") {
-                val result = requestKeyIsNotNull.tryValidate(Request(mapOf()))
-                result.isFailure().mustBeTrue()
-                result.details.size shouldBe 1
-                result.details[0].let {
+                requestKeyIsNotNull.tryValidate(Request(mapOf())).shouldBeLeft().shouldBeSingleton {
                     it.path.fullName shouldBe "Request[key]"
                     it.message.content shouldBe "Value must not be null"
                 }
             }
 
             test("success - requestKeyIsNotNullAndMin3") {
-                val result = requestKeyIsNotNullAndMin3.tryValidate(Request(mapOf("key" to "abc")))
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe "abc"
+                requestKeyIsNotNullAndMin3.tryValidate(Request(mapOf("key" to "abc")))
+                    .shouldBeRight().first shouldBe "abc"
             }
 
             test("failure - requestKeyIsNotNullAndMin3") {
-                val result = requestKeyIsNotNullAndMin3.tryValidate(Request(mapOf("key" to "ab")))
-                result.isFailure().mustBeTrue()
-                result.details.size shouldBe 1
-                result.details[0].let {
-                    it.path.fullName shouldBe "Request[key]"
-                    it.message.content shouldBe "\"ab\" must be at least 3 characters"
-                }
+                requestKeyIsNotNullAndMin3.tryValidate(Request(mapOf("key" to "ab"))).shouldBeLeft()
+                    .shouldBeSingleton {
+                        it.path.fullName shouldBe "Request[key]"
+                        it.message.content shouldBe "\"ab\" must be at least 3 characters"
+                    }
             }
         }
     })

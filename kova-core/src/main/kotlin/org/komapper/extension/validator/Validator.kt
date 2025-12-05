@@ -1,7 +1,21 @@
 package org.komapper.extension.validator
 
-import org.komapper.extension.validator.ValidationResult.Failure
-import org.komapper.extension.validator.ValidationResult.Success
+import arrow.core.Either
+import arrow.core.EitherNel
+import arrow.core.flatMap
+import arrow.core.getOrElse
+import arrow.core.leftNel
+import arrow.core.raise.RaiseDSL
+import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.context.bindNelOrAccumulate
+import arrow.core.raise.context.either
+import arrow.core.raise.merge
+import arrow.core.right
+
+@RaiseDSL
+context(raise: RaiseAccumulate<Error>)
+fun <Error, A> EitherNel<Error, A>.bindNel(): A =
+    with(raise) { this@bindNel.bindNel() }
 
 /**
  * Core validator interface for type-safe validation.
@@ -27,7 +41,7 @@ fun interface Validator<IN, OUT> {
     fun execute(input: IN): ValidationResult<OUT>
 
     companion object {
-        fun <T> success() = IdentityValidator<T> { input -> Success(input, contextOf<ValidationContext>()) }
+        fun <T> success() = IdentityValidator<T> { input -> Either.Right(input to contextOf<ValidationContext>()) }
     }
 }
 
@@ -81,10 +95,7 @@ fun <IN, OUT> Validator<IN, OUT>.validate(
     input: IN,
     config: ValidationConfig = ValidationConfig(),
 ): OUT = context(ValidationContext(config = config)) {
-    when (val result = execute(input)) {
-        is Success<OUT> -> result.value
-        is Failure -> throw ValidationException(result.details)
-    }
+    execute(input).getOrElse { throw ValidationException(it) }.first
 }
 
 /**
@@ -115,11 +126,10 @@ operator fun <IN, OUT> Validator<IN, OUT>.plus(other: Validator<IN, OUT>): Valid
  */
 infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
     addLog("Validator.and") {
-        when (val selfResult = execute(input)) {
-            is Success -> selfResult + other.execute(input)
-
-            is Failure -> {
-                if (failFast) selfResult else selfResult + other.execute(input)
+        either {
+            accumulateUnless(failFast) {
+                execute(input).bindNelOrAccumulate()
+                other.execute(input).bindNel()
             }
         }
     }
@@ -143,21 +153,9 @@ infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator
  */
 infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
     addLog("Validator.or") {
-        when (val selfResult = execute(input)) {
-            is Success -> selfResult
-            is Failure -> {
-                when (val otherResult = other.execute(input)) {
-                    is Success -> otherResult
-                    is Failure -> Failure(
-                        CompositeFailureDetail(
-                            contextOf<ValidationContext>(),
-                            first = selfResult.details,
-                            second = otherResult.details
-                        )
-                    )
-                }
-            }
-        }
+        val selfDetails = merge { return@Validator execute(input).bind().right() }
+        val otherDetails = merge { return@Validator other.execute(input).bind().right() }
+        CompositeFailureDetail(contextOf<ValidationContext>(), first = selfDetails, second = otherDetails).leftNel()
     }
 }
 
@@ -178,9 +176,8 @@ infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<
  */
 fun <IN, OUT, NEW> Validator<IN, OUT>.map(transform: (OUT) -> NEW): Validator<IN, NEW> = Validator { input ->
     addLog("Validator.map") {
-        when (val result = execute(input)) {
-            is Success -> tryRun(result.context) { transform(result.value) }
-            is Failure -> result
+        execute(input).flatMap { (value, context) ->
+            tryRun(context) { transform(value) }
         }
     }
 }
@@ -236,9 +233,8 @@ fun <IN, OUT, NEW> Validator<OUT, NEW>.compose(before: Validator<IN, OUT>): Vali
  */
 fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validator<IN, NEW> = Validator { input ->
     addLog("Validator.then") {
-        when (val result = execute(input)) {
-            is Success -> context(result.context) { after.execute(result.value) }
-            is Failure -> result
+        execute(input).flatMap { (value, context) ->
+            context(context) { after.execute(value) }
         }
     }
 }
@@ -246,16 +242,8 @@ fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validato
 internal fun <R> tryRun(
     context: ValidationContext,
     block: () -> R,
-): ValidationResult<R> {
-    return try {
-        return Success(block(), context)
-    } catch (cause: Exception) {
-        val message =
-            if (cause is MessageException) {
-                cause.validationMessage
-            } else {
-                throw cause
-            }
-        Failure(SimpleFailureDetail(context, message))
-    }
+): ValidationResult<R> = try {
+    Either.Right(block() to context)
+} catch (cause: MessageException) {
+    SimpleFailureDetail(context, cause.validationMessage).leftNel()
 }

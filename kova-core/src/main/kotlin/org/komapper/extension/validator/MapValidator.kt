@@ -1,5 +1,8 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.accumulate
+import arrow.core.raise.recover
+
 /**
  * Type alias for map validators.
  *
@@ -174,15 +177,7 @@ context(_: ValidationContext)
 private fun <K, V, T> validateOnEach(
     input: Map<K, V>,
     validate: (Map.Entry<K, V>) -> ValidationResult<T>,
-): ConstraintResult {
-    val failures = mutableListOf<ValidationResult.Failure>()
-    for (entry in input.entries) {
-        val result = validate(entry)
-        if (result.isFailure()) {
-            failures.add(result)
-            if (failFast) break
-        }
-    }
-    val failureDetails = failures.flatMap { it.details }
-    return satisfies(failureDetails.isEmpty(), Message.ValidationFailure(details = failureDetails))
-}
+): ConstraintResult = recover({
+    accumulate { for (entry in input.entries) validate(entry).bindNelOrAccumulate() }
+    ConstraintResult.Satisfied
+}) { ConstraintResult.Violated(Message.ValidationFailure(it)) }

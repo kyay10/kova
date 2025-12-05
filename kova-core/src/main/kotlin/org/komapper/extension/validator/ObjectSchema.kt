@@ -1,5 +1,10 @@
 package org.komapper.extension.validator
 
+import arrow.core.Either
+import arrow.core.getOrElse
+import arrow.core.raise.context.accumulating
+import arrow.core.raise.context.bindNelOrAccumulate
+import arrow.core.raise.context.either
 import kotlin.reflect.KProperty1
 
 /**
@@ -71,37 +76,34 @@ open class ObjectSchema<T : Any> private constructor(
         val klass = input::class
         val rootName = klass.qualifiedName ?: klass.simpleName ?: klass.toString()
         addRoot(rootName, input) {
-            val ruleResult = applyRules(input, ruleMap)
-            if (failFast && ruleResult.isFailure()) return ruleResult
-            val constraintResult = applyConstraints(input, constraints)
-            if (failFast && constraintResult.isFailure()) return constraintResult
-            return ruleResult + constraintResult
-        }
-    }
-
-    context(_: ValidationContext)
-    private fun applyRules(input: T, ruleMap: Map<String, Rule>): ValidationResult<T> {
-        val results = mutableListOf<ValidationResult<T>>()
-        for ((key, rule) in ruleMap) {
-            val result = applyRule(input, key, rule)
-            if (result.isFailure() && failFast) return result
-            results.add(result)
-        }
-        return results.fold(ValidationResult.Success(input, contextOf<ValidationContext>()), ValidationResult<T>::plus)
-    }
-
-    context(_: ValidationContext)
-    private fun applyRule(input: T, key: String, rule: Rule): ValidationResult<T> =
-        when (val pathResult = addPathChecked(key, rule.transform(input))) {
-            is ValidationResult.Success -> {
-                when (val result = context(pathResult.context) { rule.choose(input).execute(pathResult.value) }) {
-                    is ValidationResult.Success -> ValidationResult.Success(input, result.context)
-                    is ValidationResult.Failure -> ValidationResult.Failure(result.details)
+            return either {
+                accumulateUnless(failFast) {
+                    applyRules(input, ruleMap).bindNelOrAccumulate()
+                    applyConstraints(input, constraints).bindNel()
                 }
             }
-            // If circular reference detected, terminate validation early with success
-            is ValidationResult.Failure -> ValidationResult.Success(input, contextOf<ValidationContext>())
         }
+    }
+
+    context(_: ValidationContext)
+    private fun applyRules(input: T, ruleMap: Map<String, Rule>) = either {
+        accumulateUnless(failFast) {
+            var result = input to contextOf<ValidationContext>()
+            for ((key, rule) in ruleMap) accumulating { result = applyRule(input, key, rule).bindNel() }
+            result
+        }
+    }
+
+    context(_: ValidationContext)
+    private fun applyRule(input: T, key: String, rule: Rule): ValidationResult<T> {
+        val value = rule.transform(input)
+        val validator = rule.choose(input)
+        val (path, context) = addPathChecked(key, value).getOrElse {
+            // If circular reference detected, terminate validation early with success
+            return Either.Right(input to contextOf<ValidationContext>())
+        }
+        return context(context) { validator.execute(path).map { (_, context) -> input to context } }
+    }
 
     context(_: ValidationContext)
     private fun applyConstraints(input: T, constraints: List<Constraint<T>>): ValidationResult<T> = constraints

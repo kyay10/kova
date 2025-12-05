@@ -1,7 +1,10 @@
 package org.komapper.extension.validator
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
@@ -45,16 +48,12 @@ class ObjectFactoryTest :
 
             test("success - null") {
                 val userFactory = userSchema.bind(null, null)
-                val result = userFactory.tryCreate()
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe User("", 0)
+                userFactory.tryCreate().shouldBeRight().first shouldBe User("", 0)
             }
 
             test("success - non-null") {
                 val userFactory = userSchema.bind("abc", 10)
-                val result = userFactory.tryCreate()
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe User("abc", 10)
+                userFactory.tryCreate().shouldBeRight().first shouldBe User("abc", 10)
             }
         }
 
@@ -76,9 +75,7 @@ class ObjectFactoryTest :
 
             test("success - tryCreate") {
                 val factory = userSchema.bind(1)
-                val result = factory.tryCreate()
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe User(1)
+                factory.tryCreate().shouldBeRight().first shouldBe User(1)
             }
 
             test("success - create") {
@@ -89,26 +86,20 @@ class ObjectFactoryTest :
 
             test("failure - tryCreate") {
                 val factory = userSchema.bind(-1)
-                val result = factory.tryCreate()
-                result.isFailure().mustBeTrue()
-                result.details.size shouldBe 1
-                val detail = result.details.first()
-                detail.root shouldContain "<init>"
-                detail.path.fullName shouldBe "id"
-                detail.message.content shouldBe "Number -1 must be greater than or equal to 1"
+                factory.tryCreate().shouldBeLeft().shouldBeSingleton {
+                    it.root shouldContain "<init>"
+                    it.path.fullName shouldBe "id"
+                    it.message.content shouldBe "Number -1 must be greater than or equal to 1"
+                }
             }
 
             test("failure - create") {
                 val factory = userSchema.bind(-1)
-                val ex =
-                    shouldThrow<ValidationException> {
-                        factory.create()
-                    }
-                ex.details.size shouldBe 1
-                val detail = ex.details.first()
-                detail.root shouldContain "<init>"
-                detail.path.fullName shouldBe "id"
-                detail.message.content shouldBe "Number -1 must be greater than or equal to 1"
+                shouldThrow<ValidationException> { factory.create() }.details.shouldBeSingleton {
+                    it.root shouldContain "<init>"
+                    it.path.fullName shouldBe "id"
+                    it.message.content shouldBe "Number -1 must be greater than or equal to 1"
+                }
             }
         }
 
@@ -136,23 +127,18 @@ class ObjectFactoryTest :
 
             test("success") {
                 val userFactory = userSchema.bind(1, "abc")
-                val result = userFactory.tryCreate()
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe User(1, "abc")
+                userFactory.tryCreate().shouldBeRight().first shouldBe User(1, "abc")
             }
 
             test("failure") {
                 val userFactory = userSchema.bind(0, "")
-                val result = userFactory.tryCreate()
-                result.isFailure().mustBeTrue()
-                result.details.size shouldBe 2
+                val details = userFactory.tryCreate().shouldBeLeft()
+                details.size shouldBe 2
             }
 
             test("failure - failFast is true") {
                 val userFactory = userSchema.bind(0, "")
-                val result = userFactory.tryCreate(ValidationConfig(failFast = true))
-                result.isFailure().mustBeTrue()
-                result.details.size shouldBe 1
+                userFactory.tryCreate(ValidationConfig(failFast = true)).shouldBeLeft().shouldBeSingleton()
             }
         }
 
@@ -176,9 +162,7 @@ class ObjectFactoryTest :
 
             test("success") {
                 val factory = userSchema.bind(1, "abc")
-                val result = factory.tryCreate()
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe User(1, "abc")
+                factory.tryCreate().shouldBeRight().first shouldBe User(1, "abc")
             }
         }
 
@@ -235,9 +219,7 @@ class ObjectFactoryTest :
 
             test("success") {
                 val factory = personSchema.bind("abc", 10)
-                val result = factory.tryCreate()
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe Person(Name("abc"), Age(10))
+                factory.tryCreate().shouldBeRight().first shouldBe Person(Name("abc"), Age(10))
             }
         }
     })

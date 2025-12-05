@@ -1,15 +1,14 @@
 package org.komapper.extension.validator.pbt
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.booleans.shouldBeFalse
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.int
 import io.kotest.property.arbitrary.map
 import io.kotest.property.arbitrary.string
 import io.kotest.property.checkAll
 import org.komapper.extension.validator.Kova
-import org.komapper.extension.validator.isSuccess
 import org.komapper.extension.validator.max
 import org.komapper.extension.validator.min
 import org.komapper.extension.validator.onEachKey
@@ -26,23 +25,23 @@ class KovaMapTest :
 
                 // Test exactly at boundary
                 val atBoundary = (0 until minSize).associate { "key$it" to "value$it" }
-                validator.tryValidate(atBoundary).isSuccess().shouldBeTrue()
+                validator.tryValidate(atBoundary).shouldBeRight()
 
                 // Test one below boundary (if possible)
                 if (minSize > 0) {
                     val belowBoundary = (0 until minSize - 1).associate { "key$it" to "value$it" }
-                    validator.tryValidate(belowBoundary).isSuccess().shouldBeFalse()
+                    validator.tryValidate(belowBoundary).shouldBeLeft()
                 }
 
                 // Test above boundary
                 val aboveBoundary = (0 until minSize + 1).associate { "key$it" to "value$it" }
-                validator.tryValidate(aboveBoundary).isSuccess().shouldBeTrue()
+                validator.tryValidate(aboveBoundary).shouldBeRight()
             }
         }
 
         test("min - empty map") {
             val validator = Kova.map<String, String>().min(1)
-            validator.tryValidate(emptyMap()).isSuccess().shouldBeFalse()
+            validator.tryValidate(emptyMap()).shouldBeLeft()
         }
 
         test("min - zero size should always pass") {
@@ -58,8 +57,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .min(0)
                     .tryValidate(map)
-                    .isSuccess()
-                    .shouldBeTrue()
+                    .shouldBeRight()
             }
         }
 
@@ -73,7 +71,7 @@ class KovaMapTest :
                 ),
             ) { map ->
                 val validator = Kova.map<String, String>().onEachKey(Kova.string().min(1))
-                validator.tryValidate(map).isSuccess().shouldBeTrue()
+                validator.tryValidate(map).shouldBeRight()
             }
         }
 
@@ -88,19 +86,19 @@ class KovaMapTest :
             ) { map ->
                 // All keys are empty (length 0)
                 val validator = Kova.map<String, String>().onEachKey(Kova.string().min(1))
-                validator.tryValidate(map).isSuccess().shouldBeFalse()
+                validator.tryValidate(map).shouldBeLeft()
             }
         }
 
         test("onEachKey - mixed valid and invalid keys") {
             val mixedMap = mapOf("valid" to "v1", "" to "v2", "also valid" to "v3", "" to "v4")
             val validator = Kova.map<String, String>().onEachKey(Kova.string().min(1))
-            validator.tryValidate(mixedMap).isSuccess().shouldBeFalse()
+            validator.tryValidate(mixedMap).shouldBeLeft()
         }
 
         test("onEachKey - empty map should pass") {
             val validator = Kova.map<String, String>().onEachKey(Kova.string().min(1))
-            validator.tryValidate(emptyMap()).isSuccess().shouldBeTrue()
+            validator.tryValidate(emptyMap()).shouldBeRight()
         }
 
         test("onEachValue - all values valid") {
@@ -113,7 +111,7 @@ class KovaMapTest :
                 ),
             ) { map ->
                 val validator = Kova.map<String, String>().onEachValue(Kova.string().min(1))
-                validator.tryValidate(map).isSuccess().shouldBeTrue()
+                validator.tryValidate(map).shouldBeRight()
             }
         }
 
@@ -128,19 +126,19 @@ class KovaMapTest :
             ) { map ->
                 // All values are empty (length 0)
                 val validator = Kova.map<String, String>().onEachValue(Kova.string().min(1))
-                validator.tryValidate(map).isSuccess().shouldBeFalse()
+                validator.tryValidate(map).shouldBeLeft()
             }
         }
 
         test("onEachValue - mixed valid and invalid values") {
             val mixedMap = mapOf("k1" to "valid", "k2" to "", "k3" to "also valid", "k4" to "")
             val validator = Kova.map<String, String>().onEachValue(Kova.string().min(1))
-            validator.tryValidate(mixedMap).isSuccess().shouldBeFalse()
+            validator.tryValidate(mixedMap).shouldBeLeft()
         }
 
         test("onEachValue - empty map should pass") {
             val validator = Kova.map<String, String>().onEachValue(Kova.string().min(1))
-            validator.tryValidate(emptyMap()).isSuccess().shouldBeTrue()
+            validator.tryValidate(emptyMap()).shouldBeRight()
         }
 
         test("onEachValue - with complex validator") {
@@ -160,7 +158,7 @@ class KovaMapTest :
                             .min(3)
                             .max(25),
                     )
-                validator.tryValidate(map).isSuccess().shouldBeTrue()
+                validator.tryValidate(map).shouldBeRight()
             }
         }
 
@@ -171,7 +169,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .onEachKey(Kova.string().min(1))
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(validMap).isSuccess().shouldBeTrue()
+            validator.tryValidate(validMap).shouldBeRight()
         }
 
         test("onEachKey and onEachValue together - onEachKey fails") {
@@ -181,7 +179,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .onEachKey(Kova.string().min(1))
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(invalidKeyMap).isSuccess().shouldBeFalse()
+            validator.tryValidate(invalidKeyMap).shouldBeLeft()
         }
 
         test("onEachKey and onEachValue together - onEachValue fails") {
@@ -191,7 +189,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .onEachKey(Kova.string().min(1))
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(invalidValueMap).isSuccess().shouldBeFalse()
+            validator.tryValidate(invalidValueMap).shouldBeLeft()
         }
 
         test("onEachKey and onEachValue together - both fail") {
@@ -201,7 +199,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .onEachKey(Kova.string().min(1))
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(bothInvalidMap).isSuccess().shouldBeFalse()
+            validator.tryValidate(bothInvalidMap).shouldBeLeft()
         }
 
         test("min and onEachValue together - both constraints satisfied") {
@@ -211,7 +209,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .min(2)
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(validMap).isSuccess().shouldBeTrue()
+            validator.tryValidate(validMap).shouldBeRight()
         }
 
         test("min and onEachValue together - min fails") {
@@ -221,7 +219,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .min(2)
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(tooSmallMap).isSuccess().shouldBeFalse()
+            validator.tryValidate(tooSmallMap).shouldBeLeft()
         }
 
         test("min and onEachValue together - onEachValue fails") {
@@ -231,7 +229,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .min(2)
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(invalidValuesMap).isSuccess().shouldBeFalse()
+            validator.tryValidate(invalidValuesMap).shouldBeLeft()
         }
 
         test("min and onEachValue together - both fail") {
@@ -241,7 +239,7 @@ class KovaMapTest :
                     .map<String, String>()
                     .min(2)
                     .onEachValue(Kova.string().min(1))
-            validator.tryValidate(singleInvalidValue).isSuccess().shouldBeFalse()
+            validator.tryValidate(singleInvalidValue).shouldBeLeft()
         }
 
         test("validator composition with plus operator") {
@@ -251,15 +249,15 @@ class KovaMapTest :
 
             // Should pass both constraints
             val validMap = mapOf("k1" to "hello", "k2" to "world")
-            combined.tryValidate(validMap).isSuccess().shouldBeTrue()
+            combined.tryValidate(validMap).shouldBeRight()
 
             // Should fail min constraint
             val tooSmallMap = mapOf("k1" to "hello")
-            combined.tryValidate(tooSmallMap).isSuccess().shouldBeFalse()
+            combined.tryValidate(tooSmallMap).shouldBeLeft()
 
             // Should fail onEachValue constraint
             val invalidValues = mapOf("k1" to "hello", "k2" to "ab")
-            combined.tryValidate(invalidValues).isSuccess().shouldBeFalse()
+            combined.tryValidate(invalidValues).shouldBeLeft()
         }
 
         test("onEachValue with nested map validators") {
@@ -273,7 +271,7 @@ class KovaMapTest :
                     "map2" to mapOf("c" to 3),
                     "map3" to mapOf("d" to 4, "e" to 5, "f" to 6),
                 )
-            outerValidator.tryValidate(validNestedMap).isSuccess().shouldBeTrue()
+            outerValidator.tryValidate(validNestedMap).shouldBeRight()
 
             // One inner map is empty
             val invalidNestedMap =
@@ -282,6 +280,6 @@ class KovaMapTest :
                     "map2" to emptyMap(),
                     "map3" to mapOf("d" to 4, "e" to 5),
                 )
-            outerValidator.tryValidate(invalidNestedMap).isSuccess().shouldBeFalse()
+            outerValidator.tryValidate(invalidNestedMap).shouldBeLeft()
         }
     })

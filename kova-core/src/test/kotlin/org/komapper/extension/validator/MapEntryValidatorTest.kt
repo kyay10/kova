@@ -1,6 +1,9 @@
 package org.komapper.extension.validator
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class MapEntryValidatorTest :
@@ -12,14 +15,13 @@ class MapEntryValidatorTest :
                 }
 
             test("success") {
-                val result = validator.tryValidate(mapOf("a" to "1").entries.first())
-                result.isSuccess().mustBeTrue()
+                validator.tryValidate(mapOf("a" to "1").entries.first()).shouldBeRight()
             }
 
             test("failure") {
-                val result = validator.tryValidate(mapOf("a" to "a").entries.first())
-                result.isFailure().mustBeTrue()
-                result.messages.single().content shouldBe "Constraint failed: a"
+                validator.tryValidate(mapOf("a" to "a").entries.first()).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Constraint failed: a"
+                }
             }
         }
     })

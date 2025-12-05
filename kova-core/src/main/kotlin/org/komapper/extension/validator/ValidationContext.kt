@@ -1,5 +1,7 @@
 package org.komapper.extension.validator
 
+import arrow.core.leftNel
+import arrow.core.right
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
@@ -85,14 +87,9 @@ fun <T> addPathChecked(
     if (obj != null && parent.containsObject(obj)) {
         // Return failure to signal circular reference detection
         // The caller will convert this to success and terminate validation
-        return ValidationResult.Failure(
-            SimpleFailureDetail(
-                c,
-                Message.Text("Circular reference detected."),
-            ),
-        )
+        return SimpleFailureDetail(c, Message.Text("Circular reference detected.")).leftNel()
     }
-    return addPath(name, obj) { ValidationResult.Success(obj, contextOf<ValidationContext>()) }
+    return addPath(name, obj) { (obj to contextOf<ValidationContext>()).right() }
 }
 
 context(c: ValidationContext)

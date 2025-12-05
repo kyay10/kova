@@ -1,6 +1,6 @@
 package org.komapper.extension.validator
 
-import org.komapper.extension.validator.ValidationResult.Success
+import arrow.core.Either
 
 /**
  * Type alias for validators that accept nullable input but produce non-nullable output.
@@ -62,7 +62,7 @@ fun <T : Any, S : Any> Validator<T, S>.asNullable(withDefault: () -> S): WithDef
     Validator { input ->
         val defaultValue = withDefault()
         addLog("Validator.asNullable(defaultValue=$defaultValue)") {
-            if (input == null) Success(defaultValue, contextOf<ValidationContext>()) else execute(input)
+            if (input == null) Either.Right(defaultValue to contextOf<ValidationContext>()) else execute(input)
         }
     }
 

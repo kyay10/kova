@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.NonEmptyList
 import java.text.MessageFormat
 import java.util.ResourceBundle
 
@@ -94,8 +95,8 @@ sealed interface Message {
      * Used internally for composite failures from OR operations.
      */
     data class ValidationFailure(
+        val details: NonEmptyList<FailureDetail>,
         override val id: String? = null,
-        val details: List<FailureDetail>,
     ) : Message {
         override val content: String get() = details.toString()
     }

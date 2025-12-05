@@ -1,7 +1,8 @@
 package org.komapper.extension.validator
 
-import org.komapper.extension.validator.ValidationResult.Failure
-import org.komapper.extension.validator.ValidationResult.Success
+import arrow.core.Either
+import arrow.core.raise.context.accumulating
+import arrow.core.raise.context.either
 
 /**
  * Type alias for validators where the input and output types are the same.
@@ -105,7 +106,7 @@ fun <T> IdentityValidator<T>.constrain(
  */
 fun <T> IdentityValidator<T>.onlyIf(condition: (T) -> Boolean) =
     IdentityValidator<T> { input ->
-        if (condition(input)) execute(input) else Success(input, contextOf<ValidationContext>())
+        if (condition(input)) execute(input) else Either.Right(input to contextOf<ValidationContext>())
     }
 
 /**
@@ -133,10 +134,18 @@ fun <T> IdentityValidator<T>.onlyIf(condition: (T) -> Boolean) =
 fun <T> IdentityValidator<T>.chain(next: IdentityValidator<T>): IdentityValidator<T> =
     IdentityValidator { input ->
         addLog("Validator.chain") {
-            when (val result = this.execute(input)) {
-                is Success -> context(result.context) { next.execute(result.value) }
-
-                is Failure -> if (failFast) result else result + next.execute(input)
+            either {
+                accumulateUnless(failFast) {
+                    var validationContext = contextOf<ValidationContext>()
+                    var input = input
+                    accumulating {
+                        execute(input).bindNel().also { (newInput, newContext) ->
+                            input = newInput
+                            validationContext = newContext
+                        }
+                    }
+                    context(validationContext) { next.execute(input).bindNel() }
+                }
             }
         }
     }

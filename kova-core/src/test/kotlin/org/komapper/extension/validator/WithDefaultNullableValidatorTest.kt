@@ -1,6 +1,9 @@
 package org.komapper.extension.validator
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class WithDefaultNullableValidatorTest :
@@ -10,15 +13,11 @@ class WithDefaultNullableValidatorTest :
             val nullable = Kova.nullable(0)
 
             test("success - null") {
-                val result = nullable.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
+                nullable.tryValidate(null).shouldBeRight().first shouldBe 0
             }
 
             test("success - non null") {
-                val result = nullable.tryValidate(123)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 123
+                nullable.tryValidate(123).shouldBeRight().first shouldBe 123
             }
         }
 
@@ -26,15 +25,11 @@ class WithDefaultNullableValidatorTest :
             val nullable = Kova.nullable { 0 }
 
             test("success - null") {
-                val result = nullable.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
+                nullable.tryValidate(null).shouldBeRight().first shouldBe 0
             }
 
             test("success - non null") {
-                val result = nullable.tryValidate(123)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 123
+                nullable.tryValidate(123).shouldBeRight().first shouldBe 123
             }
         }
 
@@ -42,23 +37,19 @@ class WithDefaultNullableValidatorTest :
             val isNull = Kova.nullable(0).isNull()
 
             test("success") {
-                val result = isNull.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
+                isNull.tryValidate(null).shouldBeRight().first shouldBe 0
             }
 
             test("failure") {
-                val result = isNull.tryValidate(4)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Value 4 must be null"
+                isNull.tryValidate(4).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Value 4 must be null"
+                }
             }
 
             test("failure - min constraint violated") {
-                val result = isNull.tryValidate(2)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Value 2 must be null"
+                isNull.tryValidate(2).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Value 2 must be null"
+                }
             }
         }
 
@@ -74,24 +65,17 @@ class WithDefaultNullableValidatorTest :
                 )
 
             test("success - null") {
-                val result = isNullOrMin3Max3.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
+                isNullOrMin3Max3.tryValidate(null).shouldBeRight().first shouldBe 0
             }
 
             test("success - 3") {
-                val result = isNullOrMin3Max3.tryValidate(3)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 3
+                isNullOrMin3Max3.tryValidate(3).shouldBeRight().first shouldBe 3
             }
 
             test("failure") {
-                val result = isNullOrMin3Max3.tryValidate(5)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].let {
-                    it.id shouldBe "kova.or"
-                    it.content shouldBe
+                isNullOrMin3Max3.tryValidate(5).shouldBeLeft().shouldBeSingleton {
+                    it.message.id shouldBe "kova.or"
+                    it.message.content shouldBe
                         "at least one constraint must be satisfied: [[Value 5 must be null], [Number 5 must be less than or equal to 3]]"
                 }
             }
@@ -103,22 +87,17 @@ class WithDefaultNullableValidatorTest :
             val isNullOrMin3Max3 = Kova.nullable(0).isNull().or((min3 and max3).asNullable(0))
 
             test("success - null") {
-                val result = isNullOrMin3Max3.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
+                isNullOrMin3Max3.tryValidate(null).shouldBeRight().first shouldBe 0
             }
 
             test("success - non-null") {
-                val result = isNullOrMin3Max3.tryValidate(3)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 3
+                isNullOrMin3Max3.tryValidate(3).shouldBeRight().first shouldBe 3
             }
 
             test("failure - isNull and max3 constraints violated") {
-                val result = isNullOrMin3Max3.tryValidate(5)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].id shouldBe "kova.or"
+                isNullOrMin3Max3.tryValidate(5).shouldBeLeft().shouldBeSingleton {
+                    it.message.id shouldBe "kova.or"
+                }
             }
         }
 
@@ -135,29 +114,23 @@ class WithDefaultNullableValidatorTest :
                     .then(max4)
 
             test("success - isNull constraint satisfied") {
-                val result = isNullOrMin3OrMin5AndThenMax4.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
+                isNullOrMin3OrMin5AndThenMax4.tryValidate(null).shouldBeRight().first shouldBe 0
             }
 
             test("success - min3 constraint satisfied") {
-                val result = isNullOrMin3OrMin5AndThenMax4.tryValidate(3)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 3
+                isNullOrMin3OrMin5AndThenMax4.tryValidate(3).shouldBeRight().first shouldBe 3
             }
 
             test("success - max4 constraint failed") {
-                val result = isNullOrMin3OrMin5AndThenMax4.tryValidate(5)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Number 5 must be less than or equal to 4"
+                isNullOrMin3OrMin5AndThenMax4.tryValidate(5).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Number 5 must be less than or equal to 4"
+                }
             }
 
             test("failure - all constraints violated") {
-                val result = isNullOrMin3OrMin5AndThenMax4.tryValidate(2)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].id shouldBe "kova.or"
+                isNullOrMin3OrMin5AndThenMax4.tryValidate(2).shouldBeLeft().shouldBeSingleton {
+                    it.message.id shouldBe "kova.or"
+                }
             }
         }
 
@@ -166,22 +139,17 @@ class WithDefaultNullableValidatorTest :
             val whenNotNullMin3 = Kova.nullable(3).and(min3.asNullable(0))
 
             test("success - non-null") {
-                val result = whenNotNullMin3.tryValidate(4)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 4
+                whenNotNullMin3.tryValidate(4).shouldBeRight().first shouldBe 4
             }
 
             test("success - null") {
-                val result = whenNotNullMin3.tryValidate(null)
-                result.isSuccess().mustBeTrue(result)
-                println(result.context.logs.joinToString("\n"))
+                whenNotNullMin3.tryValidate(null).shouldBeRight().second.logs.joinToString("\n").also(::println)
             }
 
             test("failure - min 3constraint violated") {
-                val result = whenNotNullMin3.tryValidate(2)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Number 2 must be greater than or equal to 3"
+                whenNotNullMin3.tryValidate(2).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Number 2 must be greater than or equal to 3"
+                }
             }
         }
 
@@ -191,20 +159,17 @@ class WithDefaultNullableValidatorTest :
             val onEachNullableMin3 = Kova.list<Int?>().onEach(nullableMin3)
 
             test("success - non-null") {
-                val result = onEachNullableMin3.tryValidate(listOf(4, 5))
-                result.isSuccess().mustBeTrue()
+                onEachNullableMin3.tryValidate(listOf(4, 5)).shouldBeRight()
             }
 
             test("success - null") {
-                val result = onEachNullableMin3.tryValidate(listOf(null, null))
-                result.isSuccess().mustBeTrue()
+                onEachNullableMin3.tryValidate(listOf(null, null)).shouldBeRight()
             }
 
             test("failure - min3　constraint violated") {
-                val result = onEachNullableMin3.tryValidate(listOf(2, null))
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Number 2 must be greater than or equal to 3"
+                onEachNullableMin3.tryValidate(listOf(2, null)).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Number 2 must be greater than or equal to 3"
+                }
             }
         }
 
@@ -213,23 +178,19 @@ class WithDefaultNullableValidatorTest :
             val nullableMin3 = min3.asNullable(0).toNonNullable()
 
             test("success - non-null") {
-                val result = nullableMin3.tryValidate(4)
-                result.isSuccess().mustBeTrue()
-                val value: Int = result.value // The type is "Int" instead of "Int?"
+                val value: Int =
+                    nullableMin3.tryValidate(4).shouldBeRight().first // The type is "Int" instead of "Int?"
                 value shouldBe 4
             }
 
             test("success - null") {
-                val result = nullableMin3.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
+                nullableMin3.tryValidate(null).shouldBeRight().first shouldBe 0
             }
 
             test("failure - min3 constraint is violated") {
-                val result = nullableMin3.tryValidate(2)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Number 2 must be greater than or equal to 3"
+                nullableMin3.tryValidate(2).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Number 2 must be greater than or equal to 3"
+                }
             }
         }
 
@@ -239,28 +200,23 @@ class WithDefaultNullableValidatorTest :
             val notNullAndMin3AndMax3 = Kova.nullable(4).toNonNullable().then(min3 and max5)
 
             test("success") {
-                val result = notNullAndMin3AndMax3.tryValidate(4)
-                result.isSuccess().mustBeTrue()
+                notNullAndMin3AndMax3.tryValidate(4).shouldBeRight()
             }
 
             test("success - null") {
-                val result = notNullAndMin3AndMax3.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 4
+                notNullAndMin3AndMax3.tryValidate(null).shouldBeRight().first shouldBe 4
             }
 
             test("failure - min3 constraint is violated") {
-                val result = notNullAndMin3AndMax3.tryValidate(2)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Number 2 must be greater than or equal to 3"
+                notNullAndMin3AndMax3.tryValidate(2).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Number 2 must be greater than or equal to 3"
+                }
             }
 
             test("failure - max5 constraint violated") {
-                val result = notNullAndMin3AndMax3.tryValidate(6)
-                result.isFailure().mustBeTrue()
-                result.messages.size shouldBe 1
-                result.messages[0].content shouldBe "Number 6 must be less than or equal to 5"
+                notNullAndMin3AndMax3.tryValidate(6).shouldBeLeft().shouldBeSingleton {
+                    it.message.content shouldBe "Number 6 must be less than or equal to 5"
+                }
             }
         }
 
@@ -269,17 +225,15 @@ class WithDefaultNullableValidatorTest :
             val isNullOrMin3Max3 = Kova.nullable(0).isNull().or(min3.asNullable(0))
 
             test("success: 3") {
-                val result = isNullOrMin3Max3.tryValidate(3)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 3
-                println(result.context.logs.joinToString("\n"))
+                val (value, context) = isNullOrMin3Max3.tryValidate(3).shouldBeRight()
+                value shouldBe 3
+                println(context.logs.joinToString("\n"))
             }
 
             test("success: null") {
-                val result = isNullOrMin3Max3.tryValidate(null)
-                result.isSuccess().mustBeTrue()
-                result.value shouldBe 0
-                println(result.context.logs.joinToString("\n"))
+                val (value, context) = isNullOrMin3Max3.tryValidate(null).shouldBeRight()
+                value shouldBe 0
+                println(context.logs.joinToString("\n"))
             }
         }
     })

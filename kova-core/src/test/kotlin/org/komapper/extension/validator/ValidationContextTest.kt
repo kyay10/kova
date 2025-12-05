@@ -1,5 +1,7 @@
 package org.komapper.extension.validator
 
+import io.kotest.assertions.arrow.core.shouldBeLeft
+import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
@@ -68,10 +70,8 @@ class ValidationContextTest :
         context("addPathChecked") {
             test("detect circular reference - direct") {
                 val obj = object {}
-                context(
-                    ValidationContext("a", Path("b", obj, null))
-                ) {
-                    addPathChecked("c", obj).isFailure().mustBeTrue()
+                context(ValidationContext("a", Path("b", obj, null))) {
+                    addPathChecked("c", obj).shouldBeLeft()
                 }
             }
 
@@ -81,28 +81,22 @@ class ValidationContextTest :
                 val obj3 = object {}
                 val grandparent = Path("level1", obj1, null)
                 val parent = Path("level2", obj2, grandparent)
-                context(
-                    ValidationContext("a", parent)
-                ) {
-                    addPathChecked("level3", obj1).isFailure().mustBeTrue()
+                context(ValidationContext("a", parent)) {
+                    addPathChecked("level3", obj1).shouldBeLeft()
                 }
             }
 
             test("no circular reference with different objects") {
                 val obj1 = object {}
                 val obj2 = object {}
-                context(
-                    ValidationContext("a", Path("b", obj1, null))
-                ) {
-                    addPathChecked("c", obj2).isSuccess().mustBeTrue()
+                context(ValidationContext("a", Path("b", obj1, null))) {
+                    addPathChecked("c", obj2).shouldBeRight()
                 }
             }
 
             test("no circular reference with null objects") {
-                context(
-                    ValidationContext("a", Path("b", null, null))
-                ) {
-                    addPathChecked("c", null).isSuccess().mustBeTrue()
+                context(ValidationContext("a", Path("b", null, null))) {
+                    addPathChecked("c", null).shouldBeRight()
                 }
             }
 
@@ -112,10 +106,8 @@ class ValidationContextTest :
                 // String interning might make these the same reference, so use objects instead
                 val data1 = TestData("test")
                 val data2 = TestData("test")
-                context(
-                    ValidationContext("a", Path("b", data1, null))
-                ) {
-                    addPathChecked("c", data2).isSuccess().mustBeTrue()
+                context(ValidationContext("a", Path("b", data1, null))) {
+                    addPathChecked("c", data2).shouldBeRight()
                 }
             }
         }
