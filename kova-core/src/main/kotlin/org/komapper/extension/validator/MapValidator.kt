@@ -180,7 +180,5 @@ private fun <K, V, T> validateOnEach(
     input: Map<K, V>,
     validate: (Map.Entry<K, V>) -> ValidationResult<T>,
 ): ConstraintResult = either {
-    withError(Message::ValidationFailure) {
-        accumulate { for (entry in input.entries) validate(entry).bindNelOrAccumulate() }
-    }
+    accumulate { for (entry in input.entries) validate(entry).bindNelOrAccumulate() }
 }

@@ -1,8 +1,10 @@
 package org.komapper.extension.validator
 
 import arrow.core.Either
+import arrow.core.EitherNel
 import arrow.core.right
 import arrow.core.left
+import arrow.core.nel
 
 /**
  * Represents a validation constraint that can be applied to a value.
@@ -50,7 +52,7 @@ data class Constraint<T>(
  *
  * Either [Unit] if the constraint passes, or [Message] if it fails.
  */
-typealias ConstraintResult = Either<Message, Unit>
+typealias ConstraintResult = EitherNel<FailureDetail, Unit>
 
 /**
  * Scope available within constraint validation logic.
@@ -86,10 +88,18 @@ typealias ConstraintResult = Either<Message, Unit>
  * @param message The error message to use if the condition is false
  * @return The constraint result
  */
+context(_: ValidationContext)
 fun satisfies(
     condition: Boolean,
     message: Message,
-): ConstraintResult = if (condition) Unit.right() else message.left()
+): ConstraintResult = if (condition) Unit.right() else message.details.left()
+
+context(c: ValidationContext)
+private val Message.details
+    get() = when (this) {
+        is Message.Text, is Message.Resource -> SimpleFailureDetail(contextOf<ValidationContext>(), this).nel()
+        is Message.ValidationFailure -> details
+    }
 
 /**
  * Evaluates a condition and returns the appropriate constraint result.
@@ -109,6 +119,7 @@ fun satisfies(
  * @param message The error message text to use if the condition is false
  * @return The constraint result
  */
+context(_: ValidationContext)
 fun satisfies(
     condition: Boolean,
     message: String,
