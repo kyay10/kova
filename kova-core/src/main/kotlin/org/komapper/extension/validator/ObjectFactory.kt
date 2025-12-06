@@ -54,16 +54,7 @@ inline fun <Error, A> accumulateUnless(failFast: Boolean, block: context(RaiseAc
  *
  * @param T The type of object this factory creates
  */
-fun interface ObjectFactory<T> {
-    /**
-     * Executes validation and object construction.
-     *
-     * @param context The validation context
-     * @return A validation result containing either the constructed object or failure details
-     */
-    context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-    fun execute(): Pair<T, ValidationContext>
-}
+typealias ObjectFactory<T> = context(ValidationContext, RaiseAccumulate<FailureDetail>) () -> T
 
 /**
  * Validates inputs and attempts to create an object, returning an [arrow.core.Either].
@@ -76,7 +67,7 @@ fun interface ObjectFactory<T> {
  * val factory = PersonSchema.build("Alice", 30)
  * val result = factory.tryCreate()
  * when (result) {
- *     is Either.Right -> println("Created: ${result.value.first}")
+ *     is Either.Right -> println("Created: ${result.value}")
  *     is Either.Left -> result.value.forEach { println(it.message.content) }
  * }
  * ```
@@ -86,7 +77,7 @@ fun interface ObjectFactory<T> {
  */
 fun <T> ObjectFactory<T>.tryCreate(
     config: ValidationConfig = ValidationConfig()
-): EitherNel<FailureDetail, Pair<T, ValidationContext>> = either { createAndGetContext(config) }
+): EitherNel<FailureDetail, T> = either { create(config) }
 
 /**
  * Validates inputs and creates an object, or throws an exception on failure.
@@ -108,11 +99,8 @@ fun <T> ObjectFactory<T>.tryCreate(
  * @return The created object of type [T]
  */
 context(_: Raise<Nel<FailureDetail>>)
-fun <T> ObjectFactory<T>.create(config: ValidationConfig = ValidationConfig()): T = createAndGetContext(config).first
-
-context(_: Raise<Nel<FailureDetail>>)
-fun <T> ObjectFactory<T>.createAndGetContext(config: ValidationConfig = ValidationConfig()): Pair<T, ValidationContext> =
-    context(ValidationContext(config = config)) { accumulateUnless(failFast) { execute() } }
+fun <T> ObjectFactory<T>.create(config: ValidationConfig = ValidationConfig()): T =
+    context(ValidationContext(config = config)) { accumulateUnless(failFast) { this() } }
 
 internal data class FunctionDesc(
     val name: String,
@@ -147,86 +135,86 @@ private fun introspectFunction(ctor: Any): FunctionDesc =
     }
 
 internal fun <T0, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0) -> R,
     arg0: ObjectFactory<T0>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        validator.execute(ctor(addPath(funInfo[0], null) { arg0.execute() }.first))
+        ctor(addPath(funInfo[0], null) { arg0() }).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        validator.execute(ctor(result0.first, result1.first))
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        ctor(result0, result1).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
     arg2: ObjectFactory<T2>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        validator.execute(ctor(result0.first, result1.first, result2.first))
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        ctor(result0, result1, result2).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, T3, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2, T3) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
     arg2: ObjectFactory<T2>,
     arg3: ObjectFactory<T3>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        val result3 by accumulating { addPath(funInfo[3], null) { arg3.execute() } }
-        validator.execute(ctor(result0.first, result1.first, result2.first, result3.first))
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        val result3 by accumulating { addPath(funInfo[3], null) { arg3() } }
+        ctor(result0, result1, result2, result3).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, T3, T4, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2, T3, T4) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
     arg2: ObjectFactory<T2>,
     arg3: ObjectFactory<T3>,
     arg4: ObjectFactory<T4>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        val result3 by accumulating { addPath(funInfo[3], null) { arg3.execute() } }
-        val result4 by accumulating { addPath(funInfo[4], null) { arg4.execute() } }
-        validator.execute(ctor(result0.first, result1.first, result2.first, result3.first, result4.first))
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        val result3 by accumulating { addPath(funInfo[3], null) { arg3() } }
+        val result4 by accumulating { addPath(funInfo[4], null) { arg4() } }
+        ctor(result0, result1, result2, result3, result4).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, T3, T4, T5, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2, T3, T4, T5) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
@@ -234,30 +222,21 @@ internal fun <T0, T1, T2, T3, T4, T5, R> createObjectFactory(
     arg3: ObjectFactory<T3>,
     arg4: ObjectFactory<T4>,
     arg5: ObjectFactory<T5>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        val result3 by accumulating { addPath(funInfo[3], null) { arg3.execute() } }
-        val result4 by accumulating { addPath(funInfo[4], null) { arg4.execute() } }
-        val result5 by accumulating { addPath(funInfo[5], null) { arg5.execute() } }
-        validator.execute(
-            ctor(
-                result0.first,
-                result1.first,
-                result2.first,
-                result3.first,
-                result4.first,
-                result5.first
-            )
-        )
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        val result3 by accumulating { addPath(funInfo[3], null) { arg3() } }
+        val result4 by accumulating { addPath(funInfo[4], null) { arg4() } }
+        val result5 by accumulating { addPath(funInfo[5], null) { arg5() } }
+        ctor(result0, result1, result2, result3, result4, result5).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, T3, T4, T5, T6, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2, T3, T4, T5, T6) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
@@ -266,32 +245,22 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, R> createObjectFactory(
     arg4: ObjectFactory<T4>,
     arg5: ObjectFactory<T5>,
     arg6: ObjectFactory<T6>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        val result3 by accumulating { addPath(funInfo[3], null) { arg3.execute() } }
-        val result4 by accumulating { addPath(funInfo[4], null) { arg4.execute() } }
-        val result5 by accumulating { addPath(funInfo[5], null) { arg5.execute() } }
-        val result6 by accumulating { addPath(funInfo[6], null) { arg6.execute() } }
-        validator.execute(
-            ctor(
-                result0.first,
-                result1.first,
-                result2.first,
-                result3.first,
-                result4.first,
-                result5.first,
-                result6.first
-            )
-        )
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        val result3 by accumulating { addPath(funInfo[3], null) { arg3() } }
+        val result4 by accumulating { addPath(funInfo[4], null) { arg4() } }
+        val result5 by accumulating { addPath(funInfo[5], null) { arg5() } }
+        val result6 by accumulating { addPath(funInfo[6], null) { arg6() } }
+        ctor(result0, result1, result2, result3, result4, result5, result6).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, T3, T4, T5, T6, T7, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2, T3, T4, T5, T6, T7) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
@@ -301,34 +270,23 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, R> createObjectFactory(
     arg5: ObjectFactory<T5>,
     arg6: ObjectFactory<T6>,
     arg7: ObjectFactory<T7>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        val result3 by accumulating { addPath(funInfo[3], null) { arg3.execute() } }
-        val result4 by accumulating { addPath(funInfo[4], null) { arg4.execute() } }
-        val result5 by accumulating { addPath(funInfo[5], null) { arg5.execute() } }
-        val result6 by accumulating { addPath(funInfo[6], null) { arg6.execute() } }
-        val result7 by accumulating { addPath(funInfo[7], null) { arg7.execute() } }
-        validator.execute(
-            ctor(
-                result0.first,
-                result1.first,
-                result2.first,
-                result3.first,
-                result4.first,
-                result5.first,
-                result6.first,
-                result7.first
-            )
-        )
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        val result3 by accumulating { addPath(funInfo[3], null) { arg3() } }
+        val result4 by accumulating { addPath(funInfo[4], null) { arg4() } }
+        val result5 by accumulating { addPath(funInfo[5], null) { arg5() } }
+        val result6 by accumulating { addPath(funInfo[6], null) { arg6() } }
+        val result7 by accumulating { addPath(funInfo[7], null) { arg7() } }
+        ctor(result0, result1, result2, result3, result4, result5, result6, result7).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2, T3, T4, T5, T6, T7, T8) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
@@ -339,36 +297,24 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, R> createObjectFactory(
     arg6: ObjectFactory<T6>,
     arg7: ObjectFactory<T7>,
     arg8: ObjectFactory<T8>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        val result3 by accumulating { addPath(funInfo[3], null) { arg3.execute() } }
-        val result4 by accumulating { addPath(funInfo[4], null) { arg4.execute() } }
-        val result5 by accumulating { addPath(funInfo[5], null) { arg5.execute() } }
-        val result6 by accumulating { addPath(funInfo[6], null) { arg6.execute() } }
-        val result7 by accumulating { addPath(funInfo[7], null) { arg7.execute() } }
-        val result8 by accumulating { addPath(funInfo[8], null) { arg8.execute() } }
-        validator.execute(
-            ctor(
-                result0.first,
-                result1.first,
-                result2.first,
-                result3.first,
-                result4.first,
-                result5.first,
-                result6.first,
-                result7.first,
-                result8.first
-            )
-        )
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        val result3 by accumulating { addPath(funInfo[3], null) { arg3() } }
+        val result4 by accumulating { addPath(funInfo[4], null) { arg4() } }
+        val result5 by accumulating { addPath(funInfo[5], null) { arg5() } }
+        val result6 by accumulating { addPath(funInfo[6], null) { arg6() } }
+        val result7 by accumulating { addPath(funInfo[7], null) { arg7() } }
+        val result8 by accumulating { addPath(funInfo[8], null) { arg8() } }
+        ctor(result0, result1, result2, result3, result4, result5, result6, result7, result8).also { validator(it) }
     }
 }
 
 internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, R> createObjectFactory(
-    validator: IdentityValidator<R>,
+    validator: Constraint<R>,
     ctor: (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) -> R,
     arg0: ObjectFactory<T0>,
     arg1: ObjectFactory<T1>,
@@ -380,32 +326,20 @@ internal fun <T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, R> createObjectFactory(
     arg7: ObjectFactory<T7>,
     arg8: ObjectFactory<T8>,
     arg9: ObjectFactory<T9>,
-): ObjectFactory<R> = ObjectFactory {
+): ObjectFactory<R> = {
     val funInfo = introspectFunction(ctor)
     addRoot(funInfo.name, ctor) {
-        val result0 by accumulating { addPath(funInfo[0], null) { arg0.execute() } }
-        val result1 by accumulating { addPath(funInfo[1], null) { arg1.execute() } }
-        val result2 by accumulating { addPath(funInfo[2], null) { arg2.execute() } }
-        val result3 by accumulating { addPath(funInfo[3], null) { arg3.execute() } }
-        val result4 by accumulating { addPath(funInfo[4], null) { arg4.execute() } }
-        val result5 by accumulating { addPath(funInfo[5], null) { arg5.execute() } }
-        val result6 by accumulating { addPath(funInfo[6], null) { arg6.execute() } }
-        val result7 by accumulating { addPath(funInfo[7], null) { arg7.execute() } }
-        val result8 by accumulating { addPath(funInfo[8], null) { arg8.execute() } }
-        val result9 by accumulating { addPath(funInfo[9], null) { arg9.execute() } }
-        validator.execute(
-            ctor(
-                result0.first,
-                result1.first,
-                result2.first,
-                result3.first,
-                result4.first,
-                result5.first,
-                result6.first,
-                result7.first,
-                result8.first,
-                result9.first
-            )
-        )
+        val result0 by accumulating { addPath(funInfo[0], null) { arg0() } }
+        val result1 by accumulating { addPath(funInfo[1], null) { arg1() } }
+        val result2 by accumulating { addPath(funInfo[2], null) { arg2() } }
+        val result3 by accumulating { addPath(funInfo[3], null) { arg3() } }
+        val result4 by accumulating { addPath(funInfo[4], null) { arg4() } }
+        val result5 by accumulating { addPath(funInfo[5], null) { arg5() } }
+        val result6 by accumulating { addPath(funInfo[6], null) { arg6() } }
+        val result7 by accumulating { addPath(funInfo[7], null) { arg7() } }
+        val result8 by accumulating { addPath(funInfo[8], null) { arg8() } }
+        val result9 by accumulating { addPath(funInfo[9], null) { arg9() } }
+        ctor(result0, result1, result2, result3, result4, result5, result6, result7, result8, result9)
+            .also { validator(it) }
     }
 }

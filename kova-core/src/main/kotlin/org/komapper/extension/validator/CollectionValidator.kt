@@ -1,15 +1,6 @@
 package org.komapper.extension.validator
 
 /**
- * Type alias for collection validators.
- *
- * Provides a convenient type for validators that work with Collection types.
- *
- * @param C The collection type being validated
- */
-typealias CollectionValidator<C> = IdentityValidator<C>
-
-/**
  * Validates that the collection size is at least the specified minimum.
  *
  * Example:
@@ -23,12 +14,10 @@ typealias CollectionValidator<C> = IdentityValidator<C>
  * @param message Custom error message provider
  * @return A new validator with the minimum size constraint
  */
-fun <C : Collection<*>> CollectionValidator<C>.min(
+fun <C : Collection<*>, S> Validator<C, S>.min(
     size: Int,
     message: MessageProvider2<C, Int, Int> = Message.resource2("kova.collection.min"),
-) = constrain(message.id) {
-    satisfies(it.size >= size) { message(it, it.size, size) }
-}
+) = constrain(message.id) { satisfies(it.size >= size) { message(it, it.size, size) } }
 
 /**
  * Validates that the collection size does not exceed the specified maximum.
@@ -44,12 +33,10 @@ fun <C : Collection<*>> CollectionValidator<C>.min(
  * @param message Custom error message provider
  * @return A new validator with the maximum size constraint
  */
-fun <C : Collection<*>> CollectionValidator<C>.max(
+fun <C : Collection<*>, S> Validator<C, S>.max(
     size: Int,
     message: MessageProvider2<C, Int, Int> = Message.resource2("kova.collection.max"),
-) = constrain(message.id) {
-    satisfies(it.size <= size) { message(it, it.size, size) }
-}
+) = constrain(message.id) { satisfies(it.size <= size) { message(it, it.size, size) } }
 
 /**
  * Validates that the collection is not empty.
@@ -64,10 +51,8 @@ fun <C : Collection<*>> CollectionValidator<C>.max(
  * @param message Custom error message provider
  * @return A new validator with the not-empty constraint
  */
-fun <C : Collection<*>> CollectionValidator<C>.notEmpty(message: MessageProvider0<C> = Message.resource0("kova.collection.notEmpty")) =
-    constrain(message.id) {
-        satisfies(it.isNotEmpty()) { message(it) }
-    }
+fun <C : Collection<*>, S> Validator<C, S>.notEmpty(message: MessageProvider0<C> = Message.resource0("kova.collection.notEmpty")) =
+    constrain(message.id) { satisfies(it.isNotEmpty()) { message(it) } }
 
 /**
  * Validates that the collection size equals exactly the specified value.
@@ -83,12 +68,10 @@ fun <C : Collection<*>> CollectionValidator<C>.notEmpty(message: MessageProvider
  * @param message Custom error message provider
  * @return A new validator with the exact size constraint
  */
-fun <C : Collection<*>> CollectionValidator<C>.length(
+fun <C : Collection<*>, S> Validator<C, S>.length(
     size: Int,
     message: MessageProvider1<C, Int> = Message.resource1("kova.collection.length"),
-) = constrain(message.id) {
-    satisfies(it.size == size) { message(it, size) }
-}
+) = constrain(message.id) { satisfies(it.size == size) { message(it, size) } }
 
 /**
  * Validates each element of the collection using the specified validator.
@@ -109,9 +92,9 @@ fun <C : Collection<*>> CollectionValidator<C>.length(
  * @param validator The validator to apply to each element
  * @return A new validator with per-element validation
  */
-fun <E, C : Collection<E>> CollectionValidator<C>.onEach(validator: Validator<E, *>) =
+fun <E, C : Collection<E>, S> Validator<C, S>.onEach(validator: Validator<E, *>) =
     constrain("kova.collection.onEach") {
         it.forEachIndexed { i, element ->
-            appendPath("[$i]<collection element>") { accumulating { validator.execute(element) } }
+            appendPath("[$i]<collection element>") { accumulating { validator(element) } }
         }
     }

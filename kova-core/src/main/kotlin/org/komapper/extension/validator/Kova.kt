@@ -34,46 +34,46 @@ import java.time.LocalTime
  */
 interface Kova {
     /** Creates a validator for Boolean values. */
-    fun boolean(): IdentityValidator<Boolean> = generic()
+    fun boolean(): Constraint<Boolean> = generic()
 
     /** Creates a validator for String values with string-specific constraints. */
-    fun string(): IdentityValidator<String> = generic()
+    fun string(): Constraint<String> = generic()
 
     /** Creates a validator for Int values with numeric constraints. */
-    fun int(): IdentityValidator<Int> = generic()
+    fun int(): Constraint<Int> = generic()
 
     /** Creates a validator for Long values with numeric constraints. */
-    fun long(): IdentityValidator<Long> = generic()
+    fun long(): Constraint<Long> = generic()
 
     /** Creates a validator for Double values with numeric constraints. */
-    fun double(): IdentityValidator<Double> = generic()
+    fun double(): Constraint<Double> = generic()
 
     /** Creates a validator for Float values with numeric constraints. */
-    fun float(): IdentityValidator<Float> = generic()
+    fun float(): Constraint<Float> = generic()
 
     /** Creates a validator for Byte values with numeric constraints. */
-    fun byte(): IdentityValidator<Byte> = generic()
+    fun byte(): Constraint<Byte> = generic()
 
     /** Creates a validator for Short values with numeric constraints. */
-    fun short(): IdentityValidator<Short> = generic()
+    fun short(): Constraint<Short> = generic()
 
     /** Creates a validator for BigDecimal values with numeric constraints. */
-    fun bigDecimal(): IdentityValidator<BigDecimal> = generic()
+    fun bigDecimal(): Constraint<BigDecimal> = generic()
 
     /** Creates a validator for BigInteger values with numeric constraints. */
-    fun bigInteger(): IdentityValidator<BigInteger> = generic()
+    fun bigInteger(): Constraint<BigInteger> = generic()
 
     /** Creates a validator for UInt values with unsigned integer constraints. */
-    fun uInt(): IdentityValidator<UInt> = generic()
+    fun uInt(): Constraint<UInt> = generic()
 
     /** Creates a validator for ULong values with unsigned integer constraints. */
-    fun uLong(): IdentityValidator<ULong> = generic()
+    fun uLong(): Constraint<ULong> = generic()
 
     /** Creates a validator for UByte values with unsigned integer constraints. */
-    fun uByte(): IdentityValidator<UByte> = generic()
+    fun uByte(): Constraint<UByte> = generic()
 
     /** Creates a validator for UShort values with unsigned integer constraints. */
-    fun uShort(): IdentityValidator<UShort> = generic()
+    fun uShort(): Constraint<UShort> = generic()
 
     /**
      * Creates a validator for temporal values with temporal constraints.
@@ -95,15 +95,15 @@ interface Kova {
     fun <T> temporal(
         clock: Clock = Clock.systemDefaultZone(),
         temporalNow: TemporalNow<T>,
-    ): TemporalValidator<T> where T : java.time.temporal.Temporal, T : Comparable<T> =
-        TemporalValidator(clock = clock, temporalNow = temporalNow)
+    ): TemporalValidator<T, Unit> where T : java.time.temporal.Temporal, T : Comparable<T> =
+        TemporalValidator(clock = clock, temporalNow = temporalNow) {}
 
     /**
      * Creates a validator for LocalDate values with temporal constraints.
      *
      * @param clock The clock used for temporal comparisons like past() and future(). Defaults to system default zone.
      */
-    fun localDate(clock: Clock = Clock.systemDefaultZone()): TemporalValidator<LocalDate> =
+    fun localDate(clock: Clock = Clock.systemDefaultZone()): TemporalValidator<LocalDate, Unit> =
         temporal(clock = clock, temporalNow = LocalDateNow)
 
     /**
@@ -111,7 +111,7 @@ interface Kova {
      *
      * @param clock The clock used for temporal comparisons like past() and future(). Defaults to system default zone.
      */
-    fun localTime(clock: Clock = Clock.systemDefaultZone()): TemporalValidator<LocalTime> =
+    fun localTime(clock: Clock = Clock.systemDefaultZone()): TemporalValidator<LocalTime, Unit> =
         temporal(clock = clock, temporalNow = LocalTimeNow)
 
     /**
@@ -119,30 +119,32 @@ interface Kova {
      *
      * @param clock The clock used for temporal comparisons like past() and future(). Defaults to system default zone.
      */
-    fun localDateTime(clock: Clock = Clock.systemDefaultZone()): TemporalValidator<LocalDateTime> =
+    fun localDateTime(clock: Clock = Clock.systemDefaultZone()): TemporalValidator<LocalDateTime, Unit> =
         temporal(clock = clock, temporalNow = LocalDateTimeNow)
 
     /** Creates a validator for Collection values with size and element validation. */
-    fun <E> collection(): IdentityValidator<Collection<E>> = generic()
+    fun <E> collection(): Constraint<Collection<E>> = generic()
 
     /** Creates a validator for List values with size and element validation. */
-    fun <E> list(): IdentityValidator<List<E>> = generic()
+    fun <E> list(): Constraint<List<E>> = generic()
 
     /** Creates a validator for Set values with size and element validation. */
-    fun <E> set(): IdentityValidator<Set<E>> = generic()
+    fun <E> set(): Constraint<Set<E>> = generic()
 
     /** Creates a validator for Map values with size, key, and value validation. */
-    fun <K, V> map(): IdentityValidator<Map<K, V>> = generic()
+    fun <K, V> map(): Constraint<Map<K, V>> = generic()
 
     /** Creates a validator for Map.Entry values with key and value validation. */
-    fun <K, V> mapEntry(): IdentityValidator<Map.Entry<K, V>> = generic()
+    fun <K, V> mapEntry(): Constraint<Map.Entry<K, V>> = generic()
 
     /**
      * Creates a generic validator that accepts any value of type T.
      *
      * This is useful as a starting point for custom validators or when no specific validation is needed.
      */
-    fun <T> generic(): IdentityValidator<T> = Validator.success()
+    fun <T> generic(): Constraint<T> = { }
+
+    fun <T> id(): Validator<T, T> = { it }
 
     /**
      * Creates a nullable validator that accepts null values.
@@ -156,7 +158,7 @@ interface Kova {
      * validator.tryValidate("hello") // Success
      * ```
      */
-    fun <T : Any> nullable(): NullableValidator<T, T> = generic()
+    fun <T : Any> nullable(): Constraint<T?> = { }
 
     /**
      * Creates a nullable validator with a default value for null inputs.
@@ -171,7 +173,7 @@ interface Kova {
      * validator.validate("hello") // Returns "hello"
      * ```
      */
-    fun <T : Any> nullable(defaultValue: T): WithDefaultNullableValidator<T, T> = nullable { defaultValue }
+    fun <T : Any> nullable(defaultValue: T): Validator<T?, T> = nullable { defaultValue }
 
     /**
      * Creates a nullable validator with a lazy-evaluated default value for null inputs.
@@ -179,8 +181,7 @@ interface Kova {
      * @param withDefault A function that provides the default value when the input is null
      * @return A validator that replaces null with the result of withDefault()
      */
-    fun <T : Any> nullable(withDefault: () -> T): WithDefaultNullableValidator<T, T> =
-        generic<T>().asNullable(withDefault)
+    fun <T : Any> nullable(withDefault: () -> T): Validator<T?, T> = id<T>().asNullable(withDefault)
 
     /**
      * Creates a validator that only accepts a specific literal value.
@@ -192,7 +193,7 @@ interface Kova {
     fun <T : Any> literal(
         value: T,
         message: MessageProvider1<T, T>? = null,
-    ): IdentityValidator<T> = if (message == null) generic<T>().literal(value) else generic<T>().literal(value, message)
+    ): Constraint<T> = if (message == null) generic<T>().literal(value) else generic<T>().literal(value, message)
 
     /**
      * Creates a validator that only accepts values from a specified list.
@@ -204,7 +205,7 @@ interface Kova {
     fun <T : Any> literal(
         values: List<T>,
         message: MessageProvider1<T, List<T>>? = null,
-    ): IdentityValidator<T> = if (message == null) generic<T>().literal(values) else generic<T>().literal(values, message)
+    ): Constraint<T> = if (message == null) generic<T>().literal(values) else generic<T>().literal(values, message)
 
     /**
      * Creates a validator that only accepts values from a specified vararg list.
@@ -216,7 +217,7 @@ interface Kova {
     fun <T : Any> literal(
         vararg values: T,
         message: MessageProvider1<T, List<T>>? = null,
-    ): IdentityValidator<T> = literal(values.toList(), message)
+    ): Constraint<T> = literal(values.toList(), message)
 
     companion object : Kova
 }

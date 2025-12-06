@@ -13,7 +13,7 @@ class NumberValidatorTest :
             val validator = (Kova.int().max(2) + Kova.int().max(3)).negative()
 
             test("success") {
-                validator.tryValidate(-1).shouldBeRight().first shouldBe -1
+                validator.tryValidate(-1).shouldBeRight()
             }
 
             test("failure") {
@@ -29,10 +29,10 @@ class NumberValidatorTest :
             val validator = (Kova.int().max(2) or Kova.int().max(3)).min(1)
 
             test("success : 2") {
-                validator.tryValidate(2).shouldBeRight().first shouldBe 2
+                validator.tryValidate(2).shouldBeRight()
             }
             test("success : 3") {
-                validator.tryValidate(3).shouldBeRight().first shouldBe 3
+                validator.tryValidate(3).shouldBeRight()
             }
 
             test("failure : 4") {
@@ -63,11 +63,11 @@ class NumberValidatorTest :
             val validator = Kova.int().positive()
 
             test("success with positive number") {
-                validator.tryValidate(1).shouldBeRight().first shouldBe 1
+                validator.tryValidate(1).shouldBeRight()
             }
 
             test("success with large positive number") {
-                validator.tryValidate(100).shouldBeRight().first shouldBe 100
+                validator.tryValidate(100).shouldBeRight()
             }
 
             test("failure with zero") {
@@ -87,7 +87,7 @@ class NumberValidatorTest :
             val validator = Kova.double().positive()
 
             test("success") {
-                validator.tryValidate(0.1).shouldBeRight().first shouldBe 0.1
+                validator.tryValidate(0.1).shouldBeRight()
             }
 
             test("failure") {
@@ -101,11 +101,11 @@ class NumberValidatorTest :
             val validator = Kova.int().negative()
 
             test("success with negative number") {
-                validator.tryValidate(-1).shouldBeRight().first shouldBe -1
+                validator.tryValidate(-1).shouldBeRight()
             }
 
             test("success with large negative number") {
-                validator.tryValidate(-100).shouldBeRight().first shouldBe -100
+                validator.tryValidate(-100).shouldBeRight()
             }
 
             test("failure with zero") {
@@ -125,7 +125,7 @@ class NumberValidatorTest :
             val validator = Kova.double().negative()
 
             test("success") {
-                validator.tryValidate(-0.1).shouldBeRight().first shouldBe -0.1
+                validator.tryValidate(-0.1).shouldBeRight()
             }
 
             test("failure") {
@@ -139,15 +139,15 @@ class NumberValidatorTest :
             val validator = Kova.int().notPositive()
 
             test("success with zero") {
-                validator.tryValidate(0).shouldBeRight().first shouldBe 0
+                validator.tryValidate(0).shouldBeRight()
             }
 
             test("success with negative number") {
-                validator.tryValidate(-1).shouldBeRight().first shouldBe -1
+                validator.tryValidate(-1).shouldBeRight()
             }
 
             test("success with large negative number") {
-                validator.tryValidate(-100).shouldBeRight().first shouldBe -100
+                validator.tryValidate(-100).shouldBeRight()
             }
 
             test("failure with positive number") {
@@ -161,11 +161,11 @@ class NumberValidatorTest :
             val validator = Kova.double().notPositive()
 
             test("success with zero") {
-                validator.tryValidate(0.0).shouldBeRight().first shouldBe 0.0
+                validator.tryValidate(0.0).shouldBeRight()
             }
 
             test("success with negative") {
-                validator.tryValidate(-0.1).shouldBeRight().first shouldBe -0.1
+                validator.tryValidate(-0.1).shouldBeRight()
             }
 
             test("failure with positive") {
@@ -179,11 +179,11 @@ class NumberValidatorTest :
             val validator = Kova.int().gt(5)
 
             test("success with value greater than threshold") {
-                validator.tryValidate(6).shouldBeRight().first shouldBe 6
+                validator.tryValidate(6).shouldBeRight()
             }
 
             test("success with large value") {
-                validator.tryValidate(100).shouldBeRight().first shouldBe 100
+                validator.tryValidate(100).shouldBeRight()
             }
 
             test("failure with equal value") {
@@ -203,7 +203,7 @@ class NumberValidatorTest :
             val validator = Kova.double().gt(5.5)
 
             test("success") {
-                validator.tryValidate(5.6).shouldBeRight().first shouldBe 5.6
+                validator.tryValidate(5.6).shouldBeRight()
             }
 
             test("failure with equal value") {
@@ -223,11 +223,11 @@ class NumberValidatorTest :
             val validator = Kova.int().gte(5)
 
             test("success with value greater than threshold") {
-                validator.tryValidate(6).shouldBeRight().first shouldBe 6
+                validator.tryValidate(6).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(5).shouldBeRight().first shouldBe 5
+                validator.tryValidate(5).shouldBeRight()
             }
 
             test("failure with value less than threshold") {
@@ -241,11 +241,11 @@ class NumberValidatorTest :
             val validator = Kova.double().gte(5.5)
 
             test("success with greater value") {
-                validator.tryValidate(5.6).shouldBeRight().first shouldBe 5.6
+                validator.tryValidate(5.6).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(5.5).shouldBeRight().first shouldBe 5.5
+                validator.tryValidate(5.5).shouldBeRight()
             }
 
             test("failure") {
@@ -259,11 +259,11 @@ class NumberValidatorTest :
             val validator = Kova.int().lt(5)
 
             test("success with value less than threshold") {
-                validator.tryValidate(4).shouldBeRight().first shouldBe 4
+                validator.tryValidate(4).shouldBeRight()
             }
 
             test("success with large negative value") {
-                validator.tryValidate(-100).shouldBeRight().first shouldBe -100
+                validator.tryValidate(-100).shouldBeRight()
             }
 
             test("failure with equal value") {
@@ -283,7 +283,7 @@ class NumberValidatorTest :
             val validator = Kova.double().lt(5.5)
 
             test("success") {
-                validator.tryValidate(5.4).shouldBeRight().first shouldBe 5.4
+                validator.tryValidate(5.4).shouldBeRight()
             }
 
             test("failure with equal value") {
@@ -303,11 +303,11 @@ class NumberValidatorTest :
             val validator = Kova.int().lte(5)
 
             test("success with value less than threshold") {
-                validator.tryValidate(4).shouldBeRight().first shouldBe 4
+                validator.tryValidate(4).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(5).shouldBeRight().first shouldBe 5
+                validator.tryValidate(5).shouldBeRight()
             }
 
             test("failure with value greater than threshold") {
@@ -321,11 +321,11 @@ class NumberValidatorTest :
             val validator = Kova.double().lte(5.5)
 
             test("success with smaller value") {
-                validator.tryValidate(5.4).shouldBeRight().first shouldBe 5.4
+                validator.tryValidate(5.4).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(5.5).shouldBeRight().first shouldBe 5.5
+                validator.tryValidate(5.5).shouldBeRight()
             }
 
             test("failure") {

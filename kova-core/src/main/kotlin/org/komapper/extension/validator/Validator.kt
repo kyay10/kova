@@ -2,17 +2,11 @@ package org.komapper.extension.validator
 
 import arrow.core.EitherNel
 import arrow.core.Nel
-import arrow.core.raise.RaiseDSL
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import arrow.core.raise.context.either
 import arrow.core.raise.context.raise
 import arrow.core.raise.merge
-
-@RaiseDSL
-context(raise: RaiseAccumulate<Error>)
-fun <Error, A> EitherNel<Error, A>.bindNel(): A =
-    with(raise) { this@bindNel.bindNel() }
 
 /**
  * Core validator interface for type-safe validation.
@@ -26,21 +20,7 @@ fun <Error, A> EitherNel<Error, A>.bindNel(): A =
  * @param IN The input type to validate
  * @param OUT The output type after successful validation
  */
-fun interface Validator<IN, OUT> {
-    /**
-     * Executes the validation on the given input.
-     *
-     * @param input The value to validate
-     * @param context The validation context tracking state and configuration
-     * @return the validated value
-     */
-    context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-    fun execute(input: IN): Pair<OUT, ValidationContext>
-
-    companion object {
-        fun <T> success() = IdentityValidator<T> { it to contextOf<ValidationContext>() }
-    }
-}
+typealias Validator<IN, OUT> = context(ValidationContext, RaiseAccumulate<FailureDetail>) (IN) -> OUT
 
 /**
  * Validates the input
@@ -64,7 +44,7 @@ fun interface Validator<IN, OUT> {
 fun <IN, OUT> Validator<IN, OUT>.tryValidate(
     input: IN,
     config: ValidationConfig = ValidationConfig()
-): EitherNel<FailureDetail, Pair<OUT, ValidationContext>> = either { validateAndGetContext(input, config) }
+): EitherNel<FailureDetail, OUT> = either { validate(input, config) }
 
 /**
  * Validates the input and returns the validated value, or throws an exception on failure.
@@ -90,15 +70,8 @@ fun <IN, OUT> Validator<IN, OUT>.tryValidate(
 context(_: Raise<Nel<FailureDetail>>)
 fun <IN, OUT> Validator<IN, OUT>.validate(
     input: IN,
-    config: ValidationConfig = ValidationConfig(),
-): OUT = validateAndGetContext(input, config).first
-
-context(_: Raise<Nel<FailureDetail>>)
-fun <IN, OUT> Validator<IN, OUT>.validateAndGetContext(
-    input: IN,
     config: ValidationConfig = ValidationConfig()
-): Pair<OUT, ValidationContext> =
-    context(ValidationContext(config = config)) { accumulateUnless(failFast) { execute(input) } }
+): OUT = context(ValidationContext(config = config)) { accumulateUnless(failFast) { this(input) } }
 
 /**
  * Operator overload for [and]. Combines two validators that both must succeed.
@@ -109,7 +82,7 @@ fun <IN, OUT> Validator<IN, OUT>.validateAndGetContext(
  * // Equivalent to: Kova.string().min(3).max(10)
  * ```
  */
-operator fun <IN, OUT> Validator<IN, OUT>.plus(other: Validator<IN, OUT>): Validator<IN, OUT> = this and other
+operator fun <IN, OUT> Constraint<IN>.plus(other: Validator<IN, OUT>): Validator<IN, OUT> = this and other
 
 /**
  * Combines two validators where both must succeed for the overall validation to succeed.
@@ -126,10 +99,17 @@ operator fun <IN, OUT> Validator<IN, OUT>.plus(other: Validator<IN, OUT>): Valid
  * @param other The second validator to apply
  * @return A new validator that succeeds only if both validators succeed
  */
-infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
+infix fun <IN, OUT> Constraint<IN>.and(other: Validator<IN, OUT>): Validator<IN, OUT> = { input ->
     addLog("Validator.and") {
-        accumulating { execute(input) }
-        other.execute(input)
+        accumulating { this(input) }
+        other(input)
+    }
+}
+
+infix fun <IN, OUT> Constraint<IN>.andThen(other: Validator<IN, OUT>): Validator<IN, OUT> = { input ->
+    addLog("Validator.andThen") {
+        this(input)
+        other(input)
     }
 }
 
@@ -149,14 +129,14 @@ infix fun <IN, OUT> Validator<IN, OUT>.and(other: Validator<IN, OUT>): Validator
  * @param other The alternative validator to try if this one fails
  * @return A new validator that succeeds if either validator succeeds
  */
-infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<IN, OUT> = Validator { input ->
-    addLog("Validator.or") {
-        val selfDetails = merge<Nel<FailureDetail>> { return@Validator accumulateUnless(failFast) { execute(input) } }
-        val otherDetails =
-            merge<Nel<FailureDetail>> { return@Validator accumulateUnless(failFast) { other.execute(input) } }
-        raise(CompositeFailureDetail(contextOf<ValidationContext>(), first = selfDetails, second = otherDetails))
+infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<IN, OUT> =
+    validator@{ input ->
+        addLog("Validator.or") {
+            val selfDetails = merge { return@validator accumulateUnless(failFast) { this@or(input) } }
+            val otherDetails = merge { return@validator accumulateUnless(failFast) { other(input) } }
+            raise(CompositeFailureDetail(contextOf<ValidationContext>(), first = selfDetails, second = otherDetails))
+        }
     }
-}
 
 /**
  * Transforms the output value on successful validation.
@@ -173,10 +153,8 @@ infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<
  * @return A new validator with the transformed output type
  */
 fun <IN, OUT, NEW> Validator<IN, OUT>.map(
-    transform: context(ValidationContext, RaiseAccumulate<FailureDetail>) (OUT) -> NEW
-): Validator<IN, NEW> = then {
-    transform(it) to contextOf<ValidationContext>()
-}
+    transform: Validator<OUT, NEW>
+): Validator<IN, NEW> = then(transform)
 
 /**
  * Adds a name to the validation path for better error reporting.
@@ -192,8 +170,8 @@ fun <IN, OUT, NEW> Validator<IN, OUT>.map(
  * @param name The name to add to the validation path
  * @return A new validator that tracks the path
  */
-fun <IN, OUT> Validator<IN, OUT>.name(name: String): Validator<IN, OUT> = Validator { input ->
-    addPath(name, input) { addLog("Validator.name(name=$name)") { execute(input) } }
+fun <IN, OUT> Validator<IN, OUT>.name(name: String): Validator<IN, OUT> = { input ->
+    addPath(name, input) { addLog("Validator.name(name=$name)") { this(input) } }
 }
 
 /**
@@ -204,7 +182,8 @@ fun <IN, OUT> Validator<IN, OUT>.name(name: String): Validator<IN, OUT> = Valida
  * @param before The validator to apply first
  * @return A new validator that applies both validators in sequence
  */
-fun <IN, OUT, NEW> Validator<OUT, NEW>.compose(before: Validator<IN, OUT>): Validator<IN, NEW> = before.then(this)
+fun <IN, OUT, NEW> Validator<OUT, NEW>.compose(before: Validator<IN, OUT>): Validator<IN, NEW> =
+    before.then(this)
 
 /**
  * Chains two validators sequentially, passing the output of the first to the second.
@@ -227,9 +206,6 @@ fun <IN, OUT, NEW> Validator<OUT, NEW>.compose(before: Validator<IN, OUT>): Vali
  * @param after The validator to apply to the output of this validator
  * @return A new validator that applies both validators in sequence
  */
-fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validator<IN, NEW> = Validator { input ->
-    addLog("Validator.then") {
-        val (value, context) = execute(input)
-        context(context) { after.execute(value) }
-    }
+infix fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validator<IN, NEW> = { input ->
+    addLog("Validator.then") { after(this(input)) }
 }

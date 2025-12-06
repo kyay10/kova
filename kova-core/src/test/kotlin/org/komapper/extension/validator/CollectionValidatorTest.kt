@@ -13,7 +13,7 @@ class CollectionValidatorTest :
             val validator = Kova.list<String>().notEmpty()
 
             test("success") {
-                validator.tryValidate(listOf("1")).shouldBeRight().first shouldBe listOf("1")
+                validator.tryValidate(listOf("1")).shouldBeRight()
             }
 
             test("failure") {
@@ -27,7 +27,7 @@ class CollectionValidatorTest :
             val validator = Kova.list<String>().length(2)
 
             test("success") {
-                validator.tryValidate(listOf("1", "2")).shouldBeRight().first shouldBe listOf("1", "2")
+                validator.tryValidate(listOf("1", "2")).shouldBeRight()
             }
 
             test("failure - too few elements") {
@@ -47,7 +47,7 @@ class CollectionValidatorTest :
             val validator = Kova.list<String>().min(2).min(3)
 
             test("success") {
-                validator.tryValidate(listOf("1", "2", "3")).shouldBeRight().first shouldBe listOf("1", "2", "3")
+                validator.tryValidate(listOf("1", "2", "3")).shouldBeRight()
             }
 
             test("failure") {
@@ -59,10 +59,9 @@ class CollectionValidatorTest :
         }
 
         context("constrain") {
-            val validator =
-                Kova.list<String>().constrain("test") {
-                    satisfies(it.size == 1) { "Constraint failed" }
-                }
+            val validator = Kova.list<String>().constrain("test") {
+                satisfies(it.size == 1) { "Constraint failed" }
+            }
 
             test("success") {
                 validator.tryValidate(listOf("1")).shouldBeRight()
@@ -114,17 +113,12 @@ class CollectionValidatorTest :
                 val list: List<String>,
             )
 
-            val schema =
-                object : ObjectSchema<ListHolder>() {
-                    val list =
-                        ListHolder::list {
-                            Kova.list<String>().onEach(Kova.string().length(3))
-                        }
-                }
+            val schema = object : ObjectSchema<ListHolder>() {
+                val list = ListHolder::list { Kova.list<String>().onEach(Kova.string().length(3)) }
+            }
 
             test("success") {
-                schema.tryValidate(ListHolder(listOf("123", "456")))
-                    .shouldBeRight().first shouldBe ListHolder(listOf("123", "456"))
+                schema.tryValidate(ListHolder(listOf("123", "456"))).shouldBeRight()
             }
 
             test("failure") {

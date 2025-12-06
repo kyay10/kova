@@ -13,12 +13,7 @@ class MapValidatorTest :
             val validator = Kova.map<String, String>().min(2).min(3)
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1", "b" to "2", "c" to "3")).shouldBeRight().first shouldBe
-                    mapOf(
-                        "a" to "1",
-                        "b" to "2",
-                        "c" to "3",
-                    )
+                validator.tryValidate(mapOf("a" to "1", "b" to "2", "c" to "3")).shouldBeRight()
             }
 
             test("failure") {
@@ -33,10 +28,7 @@ class MapValidatorTest :
             val validator = Kova.map<String, String>().max(2)
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight().first shouldBe mapOf(
-                    "a" to "1",
-                    "b" to "2"
-                )
+                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight()
             }
 
             test("failure") {
@@ -50,7 +42,7 @@ class MapValidatorTest :
             val validator = Kova.map<String, String>().notEmpty()
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1")).shouldBeRight().first shouldBe mapOf("a" to "1")
+                validator.tryValidate(mapOf("a" to "1")).shouldBeRight()
             }
 
             test("failure") {
@@ -64,10 +56,7 @@ class MapValidatorTest :
             val validator = Kova.map<String, String>().length(2)
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight().first shouldBe mapOf(
-                    "a" to "1",
-                    "b" to "2"
-                )
+                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight()
             }
 
             test("failure - too few") {
@@ -90,7 +79,7 @@ class MapValidatorTest :
                 }
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1")).shouldBeRight().first shouldBe mapOf("a" to "1")
+                validator.tryValidate(mapOf("a" to "1")).shouldBeRight()
             }
 
             test("failure") {
@@ -109,10 +98,7 @@ class MapValidatorTest :
                 )
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1", "b" to "1")).shouldBeRight().first shouldBe mapOf(
-                    "a" to "1",
-                    "b" to "1"
-                )
+                validator.tryValidate(mapOf("a" to "1", "b" to "1")).shouldBeRight()
             }
 
             test("failure") {
@@ -126,10 +112,7 @@ class MapValidatorTest :
             val validator = Kova.map<String, String>().onEachKey(Kova.string().length(1))
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight().first shouldBe mapOf(
-                    "a" to "1",
-                    "b" to "2"
-                )
+                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight()
             }
 
             test("failure") {
@@ -152,10 +135,7 @@ class MapValidatorTest :
             val validator = Kova.map<String, String>().onEachValue(Kova.string().length(1))
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight().first shouldBe mapOf(
-                    "a" to "1",
-                    "b" to "2"
-                )
+                validator.tryValidate(mapOf("a" to "1", "b" to "2")).shouldBeRight()
             }
 
             test("failure") {

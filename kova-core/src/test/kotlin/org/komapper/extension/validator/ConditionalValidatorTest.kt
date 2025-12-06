@@ -12,7 +12,7 @@ class ConditionalValidatorTest :
             val validator = Kova.int().min(3).onlyIf { it % 2 == 0 }
 
             test("success") {
-                validator.tryValidate(1).shouldBeRight().first shouldBe 1
+                validator.tryValidate(1).shouldBeRight()
             }
 
             test("failure") {
@@ -26,7 +26,7 @@ class ConditionalValidatorTest :
             val validator = Kova.int().min(3).onlyIf { it % 2 == 0 } + Kova.int().min(1)
 
             test("success - plus") {
-                validator.tryValidate(1).shouldBeRight().first shouldBe 1
+                validator.tryValidate(1).shouldBeRight()
             }
 
             test("failure - plus") {

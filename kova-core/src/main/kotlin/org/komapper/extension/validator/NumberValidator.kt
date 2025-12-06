@@ -14,10 +14,10 @@ package org.komapper.extension.validator
  * @param message Custom error message provider
  * @return A new validator with the minimum constraint
  */
-fun <T : Comparable<T>> IdentityValidator<T>.min(
+fun <T : Comparable<T>, S> Validator<T, S>.min(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.number.min"),
-): IdentityValidator<T> = constrain(message.id, Constraints.min(value, message))
+): Validator<T, S> = constrain(message.id, Constraints.min(value, message))
 
 /**
  * Validates that the number is less than or equal to the specified maximum value.
@@ -33,10 +33,10 @@ fun <T : Comparable<T>> IdentityValidator<T>.min(
  * @param message Custom error message provider
  * @return A new validator with the maximum constraint
  */
-fun <T : Comparable<T>> IdentityValidator<T>.max(
+fun <T : Comparable<T>, S> Validator<T, S>.max(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.number.max"),
-): IdentityValidator<T> = constrain(message.id, Constraints.max(value, message))
+): Validator<T, S> = constrain(message.id, Constraints.max(value, message))
 
 /**
  * Validates that the number is strictly greater than the specified value.
@@ -53,10 +53,10 @@ fun <T : Comparable<T>> IdentityValidator<T>.max(
  * @param message Custom error message provider
  * @return A new validator with the greater-than constraint
  */
-fun <T : Comparable<T>> IdentityValidator<T>.gt(
+fun <T : Comparable<T>, S> Validator<T, S>.gt(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.number.gt"),
-): IdentityValidator<T> = constrain(message.id, Constraints.gt(value, message))
+): Validator<T, S> = constrain(message.id, Constraints.gt(value, message))
 
 /**
  * Validates that the number is greater than or equal to the specified value.
@@ -73,10 +73,10 @@ fun <T : Comparable<T>> IdentityValidator<T>.gt(
  * @param message Custom error message provider
  * @return A new validator with the greater-than-or-equal constraint
  */
-fun <T : Comparable<T>> IdentityValidator<T>.gte(
+fun <T : Comparable<T>, S> Validator<T, S>.gte(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.number.gte"),
-): IdentityValidator<T> = constrain(message.id, Constraints.gte(value, message))
+): Validator<T, S> = constrain(message.id, Constraints.gte(value, message))
 
 /**
  * Validates that the number is strictly less than the specified value.
@@ -93,10 +93,10 @@ fun <T : Comparable<T>> IdentityValidator<T>.gte(
  * @param message Custom error message provider
  * @return A new validator with the less-than constraint
  */
-fun <T : Comparable<T>> IdentityValidator<T>.lt(
+fun <T : Comparable<T>, S> Validator<T, S>.lt(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.number.lt"),
-): IdentityValidator<T> = constrain(message.id, Constraints.lt(value, message))
+): Validator<T, S> = constrain(message.id, Constraints.lt(value, message))
 
 /**
  * Validates that the number is less than or equal to the specified value.
@@ -113,10 +113,10 @@ fun <T : Comparable<T>> IdentityValidator<T>.lt(
  * @param message Custom error message provider
  * @return A new validator with the less-than-or-equal constraint
  */
-fun <T : Comparable<T>> IdentityValidator<T>.lte(
+fun <T : Comparable<T>, S> Validator<T, S>.lte(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.number.lte"),
-): IdentityValidator<T> = constrain(message.id, Constraints.lte(value, message))
+): Validator<T, S> = constrain(message.id, Constraints.lte(value, message))
 
 /**
  * Validates that the number is positive (greater than zero).
@@ -132,12 +132,11 @@ fun <T : Comparable<T>> IdentityValidator<T>.lte(
  * @param message Custom error message provider
  * @return A new validator with the positive constraint
  */
-fun <T : Number> IdentityValidator<T>.positive(
+fun <T : Number, S> Validator<T, S>.positive(
     message: MessageProvider0<T> = Message.resource0("kova.number.positive"),
-): IdentityValidator<T> =
-    constrain(message.id) {
-        satisfies(it.toDouble() > 0.0) { message(it) }
-    }
+): Validator<T, S> = constrain(message.id) {
+    satisfies(it.toDouble() > 0.0) { message(it) }
+}
 
 /**
  * Validates that the number is negative (less than zero).
@@ -153,12 +152,11 @@ fun <T : Number> IdentityValidator<T>.positive(
  * @param message Custom error message provider
  * @return A new validator with the negative constraint
  */
-fun <T: Number> IdentityValidator<T>.negative(
+fun <T : Number, S> Validator<T, S>.negative(
     message: MessageProvider0<T> = Message.resource0("kova.number.negative"),
-): IdentityValidator<T> =
-    constrain(message.id) {
-        satisfies(it.toDouble() < 0.0) { message(it) }
-    }
+): Validator<T, S> = constrain(message.id) {
+    satisfies(it.toDouble() < 0.0) { message(it) }
+}
 
 /**
  * Validates that the number is not positive (less than or equal to zero).
@@ -174,12 +172,11 @@ fun <T: Number> IdentityValidator<T>.negative(
  * @param message Custom error message provider
  * @return A new validator with the not-positive constraint
  */
-fun <T : Number> IdentityValidator<T>.notPositive(
+fun <T : Number, S> Validator<T, S>.notPositive(
     message: MessageProvider0<T> = Message.resource0("kova.number.notPositive"),
-): IdentityValidator<T> =
-    constrain(message.id) {
-        satisfies(it.toDouble() <= 0.0) { message(it) }
-    }
+): Validator<T, S> = constrain(message.id) {
+    satisfies(it.toDouble() <= 0.0) { message(it) }
+}
 
 /**
  * Validates that the number is not negative (greater than or equal to zero).
@@ -195,9 +192,8 @@ fun <T : Number> IdentityValidator<T>.notPositive(
  * @param message Custom error message provider
  * @return A new validator with the not-negative constraint
  */
-fun <T : Number> IdentityValidator<T>.notNegative(
+fun <T : Number, S> Validator<T, S>.notNegative(
     message: MessageProvider0<T> = Message.resource0("kova.number.notNegative"),
-): IdentityValidator<T> =
-    constrain(message.id) {
-        satisfies(it.toDouble() >= 0.0) { message(it) }
-    }
+): Validator<T, S> = constrain(message.id) {
+    satisfies(it.toDouble() >= 0.0) { message(it) }
+}

@@ -40,20 +40,20 @@ class ObjectFactoryTest :
                         name: String?,
                         age: Int?,
                     ) = factory {
-                        val arg0 = nameV.withDefault("").bind(name)
-                        val arg1 = ageV.withDefault(0).bind(age)
+                        val arg0 = nameV.bind(name ?: "")
+                        val arg1 = ageV.bind(age ?: 0)
                         create(::User, arg0, arg1)
                     }
                 }
 
             test("success - null") {
                 val userFactory = userSchema.bind(null, null)
-                userFactory.tryCreate().shouldBeRight().first shouldBe User("", 0)
+                userFactory.tryCreate().shouldBeRight() shouldBe User("", 0)
             }
 
             test("success - non-null") {
                 val userFactory = userSchema.bind("abc", 10)
-                userFactory.tryCreate().shouldBeRight().first shouldBe User("abc", 10)
+                userFactory.tryCreate().shouldBeRight() shouldBe User("abc", 10)
             }
         }
 
@@ -75,7 +75,7 @@ class ObjectFactoryTest :
 
             test("success - tryCreate") {
                 val factory = userSchema.bind(1)
-                factory.tryCreate().shouldBeRight().first shouldBe User(1)
+                factory.tryCreate().shouldBeRight() shouldBe User(1)
             }
 
             test("success - create") {
@@ -125,7 +125,7 @@ class ObjectFactoryTest :
 
             test("success") {
                 val userFactory = userSchema.bind(1, "abc")
-                userFactory.tryCreate().shouldBeRight().first shouldBe User(1, "abc")
+                userFactory.tryCreate().shouldBeRight() shouldBe User(1, "abc")
             }
 
             test("failure") {
@@ -160,7 +160,7 @@ class ObjectFactoryTest :
 
             test("success") {
                 val factory = userSchema.bind(1, "abc")
-                factory.tryCreate().shouldBeRight().first shouldBe User(1, "abc")
+                factory.tryCreate().shouldBeRight() shouldBe User(1, "abc")
             }
         }
 
@@ -217,7 +217,7 @@ class ObjectFactoryTest :
 
             test("success") {
                 val factory = personSchema.bind("abc", 10)
-                factory.tryCreate().shouldBeRight().first shouldBe Person(Name("abc"), Age(10))
+                factory.tryCreate().shouldBeRight() shouldBe Person(Name("abc"), Age(10))
             }
         }
     })

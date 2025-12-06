@@ -1,21 +1,18 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
-import arrow.core.raise.context.accumulating
-
 /**
- * Type alias for validators where the input and output types are the same.
+ * Type alias for validators that check inputs of type T
  *
  * This simplifies type signatures for validators that validate but don't transform the type,
  * such as string validators, number validators, and most primitive type validators.
  *
  * Example:
  * ```kotlin
- * // Instead of: Validator<String, String>
- * val validator: IdentityValidator<String> = Kova.string().min(1).max(10)
+ * // Instead of: Validator<String, Unit>
+ * val validator: Constraint<String> = Kova.string().min(1).max(10)
  * ```
  */
-typealias IdentityValidator<T> = Validator<T, T>
+typealias Constraint<T> = Validator<T, Unit>
 
 /**
  * Validates that the input equals the specified value.
@@ -31,7 +28,7 @@ typealias IdentityValidator<T> = Validator<T, T>
  * @param message Custom error message provider
  * @return A new validator that accepts only the specified value
  */
-fun <T> IdentityValidator<T>.literal(
+fun <T, S> Validator<T, S>.literal(
     value: T,
     message: MessageProvider1<T, T> = Message.resource1("kova.literal.single"),
 ) = constrain(message.id) {
@@ -52,7 +49,7 @@ fun <T> IdentityValidator<T>.literal(
  * @param message Custom error message provider
  * @return A new validator that accepts only values from the list
  */
-fun <T> IdentityValidator<T>.literal(
+fun <T, S> Validator<T, S>.literal(
     values: List<T>,
     message: MessageProvider1<T, List<T>> = Message.resource1("kova.literal.list"),
 ) = constrain(message.id) {
@@ -76,10 +73,18 @@ fun <T> IdentityValidator<T>.literal(
  * @param check Constraint logic
  * @return A new validator with the constraint applied
  */
-fun <T> IdentityValidator<T>.constrain(
+fun <T, S> Validator<T, S>.constrain(
     id: String,
-    check: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit,
-): IdentityValidator<T> = chain(ConstraintValidator(Constraint(id, check)))
+    check: Constraint<T>,
+): Validator<T, S> = constrain { org.komapper.extension.validator.constrain(id) { check(it) } }
+
+infix fun <T, S> Validator<T, S>.constrain(
+    check: Constraint<T>,
+): Validator<T, S> = {
+    val result by accumulating { this(it) }
+    check(it)
+    result
+}
 
 /**
  * Conditionally applies this validator based on a predicate.
@@ -103,43 +108,6 @@ fun <T> IdentityValidator<T>.constrain(
  * @param condition Predicate that determines whether to apply this validator
  * @return A new validator that conditionally validates
  */
-fun <T> IdentityValidator<T>.onlyIf(condition: (T) -> Boolean) =
-    IdentityValidator<T> { input ->
-        if (condition(input)) execute(input) else input to contextOf<ValidationContext>()
-    }
-
-/**
- * Chains two validators where the second validator receives the output of the first if it succeeds.
- *
- * **Key characteristic**: Both input and output must be the same type (T).
- * This is designed for validators that don't transform the type.
- *
- * Unlike [then]:
- * - Requires IN == OUT (same type)
- * - If the first validator fails and failFast is disabled, both validators
- *   are executed and their failures are combined
- *
- * Example with same type:
- * ```kotlin
- * val normalizeValidator = Kova.string().map { it.trim() }
- * val validateValidator = Kova.string().min(1).max(10)
- * val validator = normalizeValidator.chain(validateValidator)
- * // Input: String, Output: String (same type)
- * ```
- *
- * @param next The validator to apply next
- * @return A new validator that chains both validators
- */
-fun <T> IdentityValidator<T>.chain(next: IdentityValidator<T>): IdentityValidator<T> = IdentityValidator { input ->
-    addLog("Validator.chain") {
-        var validationContext = contextOf<ValidationContext>()
-        var input = input
-        accumulating {
-            execute(input).also { (newInput, newContext) ->
-                input = newInput
-                validationContext = newContext
-            }
-        }
-        context(validationContext) { next.execute(input) }
-    }
+fun <T> Constraint<T>.onlyIf(condition: (T) -> Boolean): Constraint<T> = { input ->
+    if (condition(input)) this(input)
 }

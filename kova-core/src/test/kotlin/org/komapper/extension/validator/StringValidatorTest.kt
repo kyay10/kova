@@ -14,7 +14,7 @@ class StringValidatorTest :
             val validator = Kova.string().max(2) + Kova.string().max(3)
 
             test("success") {
-                validator.tryValidate("1").shouldBeRight().first shouldBe "1"
+                validator.tryValidate("1").shouldBeRight()
             }
 
             test("failure") {
@@ -29,7 +29,7 @@ class StringValidatorTest :
             val validator = Kova.string().max(2) and Kova.string().max(3)
 
             test("success") {
-                validator.tryValidate("1").shouldBeRight().first shouldBe "1"
+                validator.tryValidate("1").shouldBeRight()
             }
 
             test("failure") {
@@ -44,11 +44,11 @@ class StringValidatorTest :
             val validator = (Kova.string().isInt() or Kova.literal("zero")).toUpperCase()
 
             test("success - int") {
-                validator.tryValidate("1").shouldBeRight().first shouldBe "1"
+                validator.tryValidate("1").shouldBeRight() shouldBe "1"
             }
 
             test("success - literal") {
-                validator.tryValidate("zero").shouldBeRight().first shouldBe "ZERO"
+                validator.tryValidate("zero").shouldBeRight() shouldBe "ZERO"
             }
 
             test("failure") {
@@ -60,15 +60,12 @@ class StringValidatorTest :
 
         context("chain") {
             val length = Kova.string().length(3)
-            val validator =
-                Kova
-                    .string()
-                    .trim()
-                    .chain(length)
-                    .toUpperCase()
-
+            val validator = Kova.string().trim().then {
+                length(it)
+                it.uppercase()
+            }
             test("success") {
-                validator.tryValidate(" abc ").shouldBeRight().first shouldBe "ABC"
+                validator.tryValidate(" abc ").shouldBeRight() shouldBe "ABC"
             }
 
             test("failure") {
@@ -303,7 +300,7 @@ class StringValidatorTest :
             val isInt = Kova.string().isInt()
 
             test("success") {
-                isInt.tryValidate("123").shouldBeRight().first shouldBe "123"
+                isInt.tryValidate("123").shouldBeRight()
             }
             test("failure") {
                 isInt.tryValidate("123a").shouldBeLeft().shouldBeSingleton {
@@ -316,7 +313,7 @@ class StringValidatorTest :
             val isLong = Kova.string().isLong()
 
             test("success") {
-                isLong.tryValidate("9223372036854775807").shouldBeRight().first shouldBe "9223372036854775807"
+                isLong.tryValidate("9223372036854775807").shouldBeRight()
             }
             test("failure") {
                 isLong.tryValidate("123.45").shouldBeLeft().shouldBeSingleton {
@@ -329,7 +326,7 @@ class StringValidatorTest :
             val isShort = Kova.string().isShort()
 
             test("success") {
-                isShort.tryValidate("32767").shouldBeRight().first shouldBe "32767"
+                isShort.tryValidate("32767").shouldBeRight()
             }
             test("failure") {
                 isShort.tryValidate("99999").shouldBeLeft().shouldBeSingleton {
@@ -342,7 +339,7 @@ class StringValidatorTest :
             val isByte = Kova.string().isByte()
 
             test("success") {
-                isByte.tryValidate("127").shouldBeRight().first shouldBe "127"
+                isByte.tryValidate("127").shouldBeRight()
             }
             test("failure") {
                 isByte.tryValidate("256").shouldBeLeft().shouldBeSingleton {
@@ -355,7 +352,7 @@ class StringValidatorTest :
             val isDouble = Kova.string().isDouble()
 
             test("success") {
-                isDouble.tryValidate("123.45").shouldBeRight().first shouldBe "123.45"
+                isDouble.tryValidate("123.45").shouldBeRight()
             }
             test("failure") {
                 isDouble.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -368,7 +365,7 @@ class StringValidatorTest :
             val isFloat = Kova.string().isFloat()
 
             test("success") {
-                isFloat.tryValidate("123.45").shouldBeRight().first shouldBe "123.45"
+                isFloat.tryValidate("123.45").shouldBeRight()
             }
             test("failure") {
                 isFloat.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -381,8 +378,7 @@ class StringValidatorTest :
             val isBigDecimal = Kova.string().isBigDecimal()
 
             test("success") {
-                isBigDecimal.tryValidate("123.456789012345678901234567890")
-                    .shouldBeRight().first shouldBe "123.456789012345678901234567890"
+                isBigDecimal.tryValidate("123.456789012345678901234567890").shouldBeRight()
             }
             test("failure") {
                 isBigDecimal.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -395,7 +391,7 @@ class StringValidatorTest :
             val isBigInteger = Kova.string().isBigInteger()
 
             test("success") {
-                isBigInteger.tryValidate("12345678901234567890").shouldBeRight().first shouldBe "12345678901234567890"
+                isBigInteger.tryValidate("12345678901234567890").shouldBeRight()
             }
             test("failure") {
                 isBigInteger.tryValidate("123.45").shouldBeLeft().shouldBeSingleton {
@@ -408,10 +404,10 @@ class StringValidatorTest :
             val isBoolean = Kova.string().isBoolean()
 
             test("success - true") {
-                isBoolean.tryValidate("true").shouldBeRight().first shouldBe "true"
+                isBoolean.tryValidate("true").shouldBeRight()
             }
             test("success - false") {
-                isBoolean.tryValidate("false").shouldBeRight().first shouldBe "false"
+                isBoolean.tryValidate("false").shouldBeRight()
             }
             test("false - case sensitive") {
                 isBoolean.tryValidate("TRUE").shouldBeLeft().shouldBeSingleton {
@@ -429,10 +425,10 @@ class StringValidatorTest :
             val toBoolean = Kova.string().toBoolean()
 
             test("success - true") {
-                toBoolean.tryValidate("true").shouldBeRight().first shouldBe true
+                toBoolean.tryValidate("true").shouldBeRight() shouldBe true
             }
             test("success - false") {
-                toBoolean.tryValidate("false").shouldBeRight().first shouldBe false
+                toBoolean.tryValidate("false").shouldBeRight() shouldBe false
             }
             test("failure") {
                 toBoolean.tryValidate("yes").shouldBeLeft().shouldBeSingleton {
@@ -445,7 +441,7 @@ class StringValidatorTest :
             val toLong = Kova.string().toLong()
 
             test("success") {
-                toLong.tryValidate("9223372036854775807").shouldBeRight().first shouldBe 9223372036854775807L
+                toLong.tryValidate("9223372036854775807").shouldBeRight() shouldBe 9223372036854775807L
             }
             test("failure") {
                 toLong.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -458,7 +454,7 @@ class StringValidatorTest :
             val toShort = Kova.string().toShort()
 
             test("success") {
-                toShort.tryValidate("32767").shouldBeRight().first shouldBe 32767.toShort()
+                toShort.tryValidate("32767").shouldBeRight() shouldBe 32767.toShort()
             }
             test("failure") {
                 toShort.tryValidate("99999").shouldBeLeft().shouldBeSingleton {
@@ -471,7 +467,7 @@ class StringValidatorTest :
             val toByte = Kova.string().toByte()
 
             test("success") {
-                toByte.tryValidate("127").shouldBeRight().first shouldBe 127.toByte()
+                toByte.tryValidate("127").shouldBeRight() shouldBe 127.toByte()
             }
             test("failure") {
                 toByte.tryValidate("256").shouldBeLeft().shouldBeSingleton {
@@ -484,7 +480,7 @@ class StringValidatorTest :
             val toDouble = Kova.string().toDouble()
 
             test("success") {
-                toDouble.tryValidate("123.45").shouldBeRight().first shouldBe 123.45
+                toDouble.tryValidate("123.45").shouldBeRight() shouldBe 123.45
             }
             test("failure") {
                 toDouble.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -497,7 +493,7 @@ class StringValidatorTest :
             val toFloat = Kova.string().toFloat()
 
             test("success") {
-                toFloat.tryValidate("123.45").shouldBeRight().first shouldBe 123.45f
+                toFloat.tryValidate("123.45").shouldBeRight() shouldBe 123.45f
             }
             test("failure") {
                 toFloat.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -511,7 +507,7 @@ class StringValidatorTest :
 
             test("success") {
                 toBigDecimal.tryValidate("123.456789012345678901234567890")
-                    .shouldBeRight().first shouldBe "123.456789012345678901234567890".toBigDecimal()
+                    .shouldBeRight() shouldBe "123.456789012345678901234567890".toBigDecimal()
             }
             test("failure") {
                 toBigDecimal.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -525,7 +521,7 @@ class StringValidatorTest :
 
             test("success") {
                 toBigInteger.tryValidate("12345678901234567890")
-                    .shouldBeRight().first shouldBe "12345678901234567890".toBigInteger()
+                    .shouldBeRight() shouldBe "12345678901234567890".toBigInteger()
             }
             test("failure") {
                 toBigInteger.tryValidate("123.45").shouldBeLeft().shouldBeSingleton {
@@ -538,10 +534,10 @@ class StringValidatorTest :
             val uppercase = Kova.string().uppercase()
 
             test("success") {
-                uppercase.tryValidate("HELLO").shouldBeRight().first shouldBe "HELLO"
+                uppercase.tryValidate("HELLO").shouldBeRight()
             }
             test("success - empty string") {
-                uppercase.tryValidate("").shouldBeRight().first shouldBe ""
+                uppercase.tryValidate("").shouldBeRight()
             }
             test("failure") {
                 uppercase.tryValidate("Hello").shouldBeLeft().shouldBeSingleton {
@@ -554,10 +550,10 @@ class StringValidatorTest :
             val lowercase = Kova.string().lowercase()
 
             test("success") {
-                lowercase.tryValidate("hello").shouldBeRight().first shouldBe "hello"
+                lowercase.tryValidate("hello").shouldBeRight()
             }
             test("success - empty string") {
-                lowercase.tryValidate("").shouldBeRight().first shouldBe ""
+                lowercase.tryValidate("").shouldBeRight()
             }
             test("failure") {
                 lowercase.tryValidate("Hello").shouldBeLeft().shouldBeSingleton {
@@ -570,7 +566,7 @@ class StringValidatorTest :
             val toInt = Kova.string().toInt()
 
             test("success") {
-                toInt.tryValidate("123").shouldBeRight().first shouldBe 123
+                toInt.tryValidate("123").shouldBeRight() shouldBe 123
             }
             test("failure") {
                 toInt.tryValidate("123a").shouldBeLeft().shouldBeSingleton {
@@ -580,14 +576,10 @@ class StringValidatorTest :
         }
 
         context("nullableString") {
-            val max1 =
-                Kova
-                    .nullable<String>()
-                    .toNonNullable()
-                    .then(Kova.string().max(1))
+            val max1 = Kova.nullable<String>().notNull().constrain(Kova.string().max(1).asNullable())
 
             test("success") {
-                max1.tryValidate("1").shouldBeRight().first shouldBe "1"
+                max1.tryValidate("1").shouldBeRight()
             }
             test("failure - null") {
                 max1.tryValidate(null).shouldBeLeft()
@@ -600,28 +592,27 @@ class StringValidatorTest :
         }
 
         context("map - string bools") {
-            val stringBools =
-                Kova.string().map {
-                    when (it) {
-                        "true" -> true
-                        "1" -> true
-                        "false" -> false
-                        "0" -> false
-                        else -> raise("\"$it\" is not a boolean value".failure)
-                    }
+            val stringBools = Kova.string().and {
+                when (it) {
+                    "true" -> true
+                    "1" -> true
+                    "false" -> false
+                    "0" -> false
+                    else -> raise("\"$it\" is not a boolean value".failure)
                 }
+            }
 
             test("success - true") {
-                stringBools.tryValidate("true").shouldBeRight().first shouldBe true
+                stringBools.tryValidate("true").shouldBeRight() shouldBe true
             }
             test("success - 1") {
-                stringBools.tryValidate("1").shouldBeRight().first shouldBe true
+                stringBools.tryValidate("1").shouldBeRight() shouldBe true
             }
             test("success - false") {
-                stringBools.tryValidate("false").shouldBeRight().first shouldBe false
+                stringBools.tryValidate("false").shouldBeRight() shouldBe false
             }
             test("success - 0") {
-                stringBools.tryValidate("0").shouldBeRight().first shouldBe false
+                stringBools.tryValidate("0").shouldBeRight() shouldBe false
             }
             test("failure") {
                 stringBools.tryValidate("abc").shouldBeLeft().shouldBeSingleton {
@@ -634,35 +625,38 @@ class StringValidatorTest :
             val trim = Kova.string().trim()
 
             test("success - trimming leading whitespace") {
-                trim.tryValidate("  hello").shouldBeRight().first shouldBe "hello"
+                trim.tryValidate("  hello").shouldBeRight() shouldBe "hello"
             }
 
             test("success - trimming trailing whitespace") {
-                trim.tryValidate("hello  ").shouldBeRight().first shouldBe "hello"
+                trim.tryValidate("hello  ").shouldBeRight() shouldBe "hello"
             }
 
             test("success - trimming both sides") {
-                trim.tryValidate("  hello  ").shouldBeRight().first shouldBe "hello"
+                trim.tryValidate("  hello  ").shouldBeRight() shouldBe "hello"
             }
 
             test("success - no whitespace to trim") {
-                trim.tryValidate("hello").shouldBeRight().first shouldBe "hello"
+                trim.tryValidate("hello").shouldBeRight() shouldBe "hello"
             }
 
             test("success - empty string") {
-                trim.tryValidate("").shouldBeRight().first shouldBe ""
+                trim.tryValidate("").shouldBeRight() shouldBe ""
             }
 
             test("success - only whitespace") {
-                trim.tryValidate("   ").shouldBeRight().first shouldBe ""
+                trim.tryValidate("   ").shouldBeRight() shouldBe ""
             }
         }
 
         context("trim with constraints") {
-            val trimMin3 = Kova.string().trim().min(3)
+            val trimMin3 = Kova.string().trim() then {
+                Kova.string().min(3)(it)
+                it
+            }
 
             test("success - trimmed value meets constraint") {
-                trimMin3.tryValidate("  hello  ").shouldBeRight().first shouldBe "hello"
+                trimMin3.tryValidate("  hello  ").shouldBeRight() shouldBe "hello"
             }
 
             test("failure - trimmed value violates constraint") {
@@ -682,31 +676,34 @@ class StringValidatorTest :
             val toUpperCase = Kova.string().toUpperCase()
 
             test("success - lowercase to uppercase") {
-                toUpperCase.tryValidate("hello").shouldBeRight().first shouldBe "HELLO"
+                toUpperCase.tryValidate("hello").shouldBeRight() shouldBe "HELLO"
             }
 
             test("success - mixed case to uppercase") {
-                toUpperCase.tryValidate("HeLLo").shouldBeRight().first shouldBe "HELLO"
+                toUpperCase.tryValidate("HeLLo").shouldBeRight() shouldBe "HELLO"
             }
 
             test("success - already uppercase") {
-                toUpperCase.tryValidate("HELLO").shouldBeRight().first shouldBe "HELLO"
+                toUpperCase.tryValidate("HELLO").shouldBeRight() shouldBe "HELLO"
             }
 
             test("success - empty string") {
-                toUpperCase.tryValidate("").shouldBeRight().first shouldBe ""
+                toUpperCase.tryValidate("").shouldBeRight() shouldBe ""
             }
 
             test("success - with numbers and symbols") {
-                toUpperCase.tryValidate("hello123!@#").shouldBeRight().first shouldBe "HELLO123!@#"
+                toUpperCase.tryValidate("hello123!@#").shouldBeRight() shouldBe "HELLO123!@#"
             }
         }
 
         context("toUpperCase with constraints") {
-            val toUpperCaseMin3 = Kova.string().toUpperCase().min(3)
+            val toUpperCaseMin3 = Kova.string().toUpperCase() then {
+                Kova.string().min(3)(it)
+                it
+            }
 
             test("success - transformed value meets constraint") {
-                toUpperCaseMin3.tryValidate("hello").shouldBeRight().first shouldBe "HELLO"
+                toUpperCaseMin3.tryValidate("hello").shouldBeRight() shouldBe "HELLO"
             }
 
             test("failure - transformed value violates constraint") {
@@ -716,8 +713,11 @@ class StringValidatorTest :
             }
 
             test("success - combining toUpperCase with startsWith") {
-                val toUpperCaseStartsWithH = Kova.string().toUpperCase().startsWith("H")
-                toUpperCaseStartsWithH.tryValidate("hello").shouldBeRight().first shouldBe "HELLO"
+                val toUpperCaseStartsWithH = Kova.string().toUpperCase() then {
+                    Kova.string().startsWith("H")(it)
+                    it
+                }
+                toUpperCaseStartsWithH.tryValidate("hello").shouldBeRight() shouldBe "HELLO"
             }
         }
 
@@ -725,31 +725,34 @@ class StringValidatorTest :
             val toLowerCase = Kova.string().toLowerCase()
 
             test("success - uppercase to lowercase") {
-                toLowerCase.tryValidate("HELLO").shouldBeRight().first shouldBe "hello"
+                toLowerCase.tryValidate("HELLO").shouldBeRight() shouldBe "hello"
             }
 
             test("success - mixed case to lowercase") {
-                toLowerCase.tryValidate("HeLLo").shouldBeRight().first shouldBe "hello"
+                toLowerCase.tryValidate("HeLLo").shouldBeRight() shouldBe "hello"
             }
 
             test("success - already lowercase") {
-                toLowerCase.tryValidate("hello").shouldBeRight().first shouldBe "hello"
+                toLowerCase.tryValidate("hello").shouldBeRight() shouldBe "hello"
             }
 
             test("success - empty string") {
-                toLowerCase.tryValidate("").shouldBeRight().first shouldBe ""
+                toLowerCase.tryValidate("").shouldBeRight() shouldBe ""
             }
 
             test("success - with numbers and symbols") {
-                toLowerCase.tryValidate("HELLO123!@#").shouldBeRight().first shouldBe "hello123!@#"
+                toLowerCase.tryValidate("HELLO123!@#").shouldBeRight() shouldBe "hello123!@#"
             }
         }
 
         context("toLowerCase with constraints") {
-            val toLowerCaseMin3 = Kova.string().toLowerCase().min(3)
+            val toLowerCaseMin3 = Kova.string().toLowerCase().then {
+                Kova.string().min(3)(it)
+                it
+            }
 
             test("success - transformed value meets constraint") {
-                toLowerCaseMin3.tryValidate("HELLO").shouldBeRight().first shouldBe "hello"
+                toLowerCaseMin3.tryValidate("HELLO").shouldBeRight() shouldBe "hello"
             }
 
             test("failure - transformed value violates constraint") {
@@ -759,22 +762,25 @@ class StringValidatorTest :
             }
 
             test("success - combining toLowerCase with startsWith") {
-                val toLowerCaseStartsWithH = Kova.string().toLowerCase().startsWith("h")
-                toLowerCaseStartsWithH.tryValidate("HELLO").shouldBeRight().first shouldBe "hello"
+                val toLowerCaseStartsWithH = Kova.string().toLowerCase().then {
+                    Kova.string().startsWith("h")(it)
+                    it
+                }
+                toLowerCaseStartsWithH.tryValidate("HELLO").shouldBeRight() shouldBe "hello"
             }
         }
 
         context("isEnum with Type") {
-            val isEnum = Kova.string().isEnum<Status>()
+            val isEnum = Kova.string().isEnum<Status, _>()
 
             test("success - ACTIVE") {
-                isEnum.tryValidate("ACTIVE").shouldBeRight().first shouldBe "ACTIVE"
+                isEnum.tryValidate("ACTIVE").shouldBeRight()
             }
             test("success - INACTIVE") {
-                isEnum.tryValidate("INACTIVE").shouldBeRight().first shouldBe "INACTIVE"
+                isEnum.tryValidate("INACTIVE").shouldBeRight()
             }
             test("success - PENDING") {
-                isEnum.tryValidate("PENDING").shouldBeRight().first shouldBe "PENDING"
+                isEnum.tryValidate("PENDING").shouldBeRight()
             }
             test("failure - invalid value") {
                 isEnum.tryValidate("INVALID").shouldBeLeft().shouldBeSingleton {
@@ -792,13 +798,13 @@ class StringValidatorTest :
             val isEnum = Kova.string().isEnum(Status::class)
 
             test("success - ACTIVE") {
-                isEnum.tryValidate("ACTIVE").shouldBeRight().first shouldBe "ACTIVE"
+                isEnum.tryValidate("ACTIVE").shouldBeRight()
             }
             test("success - INACTIVE") {
-                isEnum.tryValidate("INACTIVE").shouldBeRight().first shouldBe "INACTIVE"
+                isEnum.tryValidate("INACTIVE").shouldBeRight()
             }
             test("success - PENDING") {
-                isEnum.tryValidate("PENDING").shouldBeRight().first shouldBe "PENDING"
+                isEnum.tryValidate("PENDING").shouldBeRight()
             }
             test("failure - invalid value") {
                 isEnum.tryValidate("INVALID").shouldBeLeft().shouldBeSingleton {
@@ -816,13 +822,13 @@ class StringValidatorTest :
             val toEnum = Kova.string().toEnum<Status>()
 
             test("success - ACTIVE") {
-                toEnum.tryValidate("ACTIVE").shouldBeRight().first shouldBe Status.ACTIVE
+                toEnum.tryValidate("ACTIVE").shouldBeRight() shouldBe Status.ACTIVE
             }
             test("success - INACTIVE") {
-                toEnum.tryValidate("INACTIVE").shouldBeRight().first shouldBe Status.INACTIVE
+                toEnum.tryValidate("INACTIVE").shouldBeRight() shouldBe Status.INACTIVE
             }
             test("success - PENDING") {
-                toEnum.tryValidate("PENDING").shouldBeRight().first shouldBe Status.PENDING
+                toEnum.tryValidate("PENDING").shouldBeRight() shouldBe Status.PENDING
             }
             test("failure - invalid value") {
                 toEnum.tryValidate("INVALID").shouldBeLeft().shouldBeSingleton {

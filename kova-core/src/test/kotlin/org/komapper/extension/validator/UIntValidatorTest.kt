@@ -13,7 +13,7 @@ class UIntValidatorTest :
             val validator = (Kova.uInt().max(10u) + Kova.uInt().max(20u)).min(5u)
 
             test("success") {
-                validator.tryValidate(8u).shouldBeRight().first shouldBe 8u
+                validator.tryValidate(8u).shouldBeRight()
             }
 
             test("failure") {
@@ -27,11 +27,11 @@ class UIntValidatorTest :
             val validator = (Kova.uInt().max(10u) or Kova.uInt().max(20u)).min(5u)
 
             test("success : 10") {
-                validator.tryValidate(10u).shouldBeRight().first shouldBe 10u
+                validator.tryValidate(10u).shouldBeRight()
             }
 
             test("success : 20") {
-                validator.tryValidate(20u).shouldBeRight().first shouldBe 20u
+                validator.tryValidate(20u).shouldBeRight()
             }
 
             test("failure : 25") {
@@ -62,11 +62,11 @@ class UIntValidatorTest :
             val validator = Kova.uInt().min(5u)
 
             test("success with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeRight().first shouldBe 6u
+                validator.tryValidate(6u).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(5u).shouldBeRight().first shouldBe 5u
+                validator.tryValidate(5u).shouldBeRight()
             }
 
             test("failure with value less than threshold") {
@@ -80,11 +80,11 @@ class UIntValidatorTest :
             val validator = Kova.uInt().max(10u)
 
             test("success with value less than threshold") {
-                validator.tryValidate(9u).shouldBeRight().first shouldBe 9u
+                validator.tryValidate(9u).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(10u).shouldBeRight().first shouldBe 10u
+                validator.tryValidate(10u).shouldBeRight()
             }
 
             test("failure with value greater than threshold") {
@@ -98,11 +98,11 @@ class UIntValidatorTest :
             val validator = Kova.uInt().gt(5u)
 
             test("success with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeRight().first shouldBe 6u
+                validator.tryValidate(6u).shouldBeRight()
             }
 
             test("success with large value") {
-                validator.tryValidate(100u).shouldBeRight().first shouldBe 100u
+                validator.tryValidate(100u).shouldBeRight()
             }
 
             test("failure with equal value") {
@@ -122,11 +122,11 @@ class UIntValidatorTest :
             val validator = Kova.uInt().gte(5u)
 
             test("success with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeRight().first shouldBe 6u
+                validator.tryValidate(6u).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(5u).shouldBeRight().first shouldBe 5u
+                validator.tryValidate(5u).shouldBeRight()
             }
 
             test("failure with value less than threshold") {
@@ -140,11 +140,11 @@ class UIntValidatorTest :
             val validator = Kova.uInt().lt(5u)
 
             test("success with value less than threshold") {
-                validator.tryValidate(4u).shouldBeRight().first shouldBe 4u
+                validator.tryValidate(4u).shouldBeRight()
             }
 
             test("success with zero") {
-                validator.tryValidate(0u).shouldBeRight().first shouldBe 0u
+                validator.tryValidate(0u).shouldBeRight()
             }
 
             test("failure with equal value") {
@@ -164,11 +164,11 @@ class UIntValidatorTest :
             val validator = Kova.uInt().lte(5u)
 
             test("success with value less than threshold") {
-                validator.tryValidate(4u).shouldBeRight().first shouldBe 4u
+                validator.tryValidate(4u).shouldBeRight()
             }
 
             test("success with equal value") {
-                validator.tryValidate(5u).shouldBeRight().first shouldBe 5u
+                validator.tryValidate(5u).shouldBeRight()
             }
 
             test("failure with value greater than threshold") {
@@ -183,7 +183,7 @@ class UIntValidatorTest :
                 val validator = Kova.uLong().min(5uL)
 
                 test("success") {
-                    validator.tryValidate(6uL).shouldBeRight().first shouldBe 6uL
+                    validator.tryValidate(6uL).shouldBeRight()
                 }
 
                 test("failure") {
@@ -197,7 +197,7 @@ class UIntValidatorTest :
                 val validator = Kova.uLong().max(10uL)
 
                 test("success") {
-                    validator.tryValidate(9uL).shouldBeRight().first shouldBe 9uL
+                    validator.tryValidate(9uL).shouldBeRight()
                 }
 
                 test("failure") {
@@ -213,7 +213,7 @@ class UIntValidatorTest :
                 val validator = Kova.uByte().min(5u)
 
                 test("success") {
-                    validator.tryValidate(6u).shouldBeRight().first shouldBe 6.toUByte()
+                    validator.tryValidate(6u).shouldBeRight()
                 }
 
                 test("failure") {
@@ -227,7 +227,7 @@ class UIntValidatorTest :
                 val validator = Kova.uByte().max(10u)
 
                 test("success") {
-                    validator.tryValidate(9u).shouldBeRight().first shouldBe 9.toUByte()
+                    validator.tryValidate(9u).shouldBeRight()
                 }
 
                 test("failure") {
@@ -243,7 +243,7 @@ class UIntValidatorTest :
                 val validator = Kova.uShort().min(5u)
 
                 test("success") {
-                    validator.tryValidate(6u).shouldBeRight().first shouldBe 6.toUShort()
+                    validator.tryValidate(6u).shouldBeRight()
                 }
 
                 test("failure") {
@@ -257,7 +257,7 @@ class UIntValidatorTest :
                 val validator = Kova.uShort().max(10u)
 
                 test("success") {
-                    validator.tryValidate(9u).shouldBeRight().first shouldBe 9.toUShort()
+                    validator.tryValidate(9u).shouldBeRight()
                 }
 
                 test("failure") {
@@ -269,20 +269,14 @@ class UIntValidatorTest :
         }
 
         context("chaining multiple validators") {
-            val validator =
-                Kova
-                    .uInt()
-                    .min(5u)
-                    .max(10u)
-                    .gt(6u)
-                    .lte(9u)
+            val validator = Kova.uInt().min(5u).max(10u).gt(6u).lte(9u)
 
             test("success with value 7") {
-                validator.tryValidate(7u).shouldBeRight().first shouldBe 7u
+                validator.tryValidate(7u).shouldBeRight()
             }
 
             test("success with value 9") {
-                validator.tryValidate(9u).shouldBeRight().first shouldBe 9u
+                validator.tryValidate(9u).shouldBeRight()
             }
 
             test("failure with value 5") {

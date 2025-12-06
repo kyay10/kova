@@ -53,8 +53,8 @@ class KovaTest :
 
             val userSchema =
                 object : ObjectSchema<User>() {
-                    val nameV = User::name { Kova.nullable<String>().isNull().or(Kova.literal("")) }
-                    val ageV = User::age { Kova.nullable<Int>().isNull().or(Kova.literal(0)) }
+                    val nameV = User::name { Kova.nullable<String>().isNull() or Kova.literal("").asNullable() }
+                    val ageV = User::age { Kova.nullable<Int>().isNull() or Kova.literal(0).asNullable() }
 
                     fun bind(
                         name: String?,
@@ -68,12 +68,12 @@ class KovaTest :
 
             test("success - null") {
                 val userFactory = userSchema.bind(null, null)
-                userFactory.tryCreate().shouldBeRight().first shouldBe User(null, null)
+                userFactory.tryCreate().shouldBeRight() shouldBe User(null, null)
             }
 
             test("success - non-null") {
                 val userFactory = userSchema.bind("", 0)
-                userFactory.tryCreate().shouldBeRight().first shouldBe User("", 0)
+                userFactory.tryCreate().shouldBeRight() shouldBe User("", 0)
             }
 
             test("failure") {
@@ -96,13 +96,13 @@ class KovaTest :
             }
 
             val notNull = Kova.nullable<String>().notNull()
-            val notNullAndMin3 = notNull.and(Kova.string().min(3)).toNonNullable()
-            val requestKey = Kova.generic<Request>().name("Request[key]").map { it["key"] }
-            val requestKeyIsNotNull = requestKey.then(notNull)
-            val requestKeyIsNotNullAndMin3 = requestKey.then(notNullAndMin3)
+            val notNullAndMin3 = notNull.and(Kova.string().min(3))
+            val requestKey = Kova.id<Request>().map { it["key"] }
+            val requestKeyIsNotNull = requestKey.then(notNull).name("Request[key]")
+            val requestKeyIsNotNullAndMin3 = requestKey.then(notNullAndMin3.asNullable()).name("Request[key]")
 
             test("success - requestKeyIsNotNull") {
-                requestKeyIsNotNull.tryValidate(Request(mapOf("key" to "abc"))).shouldBeRight().first shouldBe "abc"
+                requestKeyIsNotNull.tryValidate(Request(mapOf("key" to "abc"))).shouldBeRight()
             }
 
             test("failure - requestKeyIsNotNull") {
@@ -113,8 +113,7 @@ class KovaTest :
             }
 
             test("success - requestKeyIsNotNullAndMin3") {
-                requestKeyIsNotNullAndMin3.tryValidate(Request(mapOf("key" to "abc")))
-                    .shouldBeRight().first shouldBe "abc"
+                requestKeyIsNotNullAndMin3.tryValidate(Request(mapOf("key" to "abc"))).shouldBeRight()
             }
 
             test("failure - requestKeyIsNotNullAndMin3") {

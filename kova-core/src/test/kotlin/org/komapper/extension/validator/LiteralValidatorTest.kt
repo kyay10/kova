@@ -14,7 +14,7 @@ class LiteralValidatorTest :
             val validator = Kova.literal(true)
 
             test("success") {
-                validator.tryValidate(true).shouldBeRight().first.shouldBeTrue()
+                validator.tryValidate(true).shouldBeRight()
             }
 
             test("failure") {
@@ -28,7 +28,7 @@ class LiteralValidatorTest :
             val validator = Kova.literal(123)
 
             test("success") {
-                validator.tryValidate(123).shouldBeRight().first shouldBe 123
+                validator.tryValidate(123).shouldBeRight()
             }
 
             test("failure") {
@@ -42,7 +42,7 @@ class LiteralValidatorTest :
             val validator = Kova.literal("abc")
 
             test("success") {
-                validator.tryValidate("abc").shouldBeRight().first shouldBe "abc"
+                validator.tryValidate("abc").shouldBeRight()
             }
 
             test("failure") {
@@ -56,7 +56,7 @@ class LiteralValidatorTest :
             val validator = Kova.literal("aaa", "bbb", "ccc")
 
             test("success") {
-                validator.tryValidate("bbb").shouldBeRight().first shouldBe "bbb"
+                validator.tryValidate("bbb").shouldBeRight()
             }
 
             test("failure") {
@@ -70,7 +70,7 @@ class LiteralValidatorTest :
             val validator = Kova.literal(listOf("aaa", "bbb", "ccc"))
 
             test("success") {
-                validator.tryValidate("bbb").shouldBeRight().first shouldBe "bbb"
+                validator.tryValidate("bbb").shouldBeRight()
             }
 
             test("failure") {

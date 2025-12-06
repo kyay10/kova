@@ -55,7 +55,7 @@ class ObjectSchemaTest :
 
             test("success") {
                 val user = User(1, "abc")
-                userSchema.tryValidate(user).shouldBeRight().first shouldBe user
+                userSchema.tryValidate(user).shouldBeRight()
             }
 
             test("failure - 1 rule violated") {
@@ -96,7 +96,7 @@ class ObjectSchemaTest :
             test("success") {
                 val user = User(-1, "abc")
                 val newSchema = userSchema.replace(User::id, Kova.int().min(-1))
-                newSchema.tryValidate(user).shouldBeRight().first shouldBe user
+                newSchema.tryValidate(user).shouldBeRight()
             }
         }
 
@@ -115,7 +115,7 @@ class ObjectSchemaTest :
 
             test("success") {
                 val period = Period(LocalDate.of(2020, 1, 1), LocalDate.of(2021, 1, 1))
-                periodSchema.tryValidate(period).shouldBeRight().first shouldBe period
+                periodSchema.tryValidate(period).shouldBeRight()
             }
 
             test("failure") {
@@ -137,11 +137,11 @@ class ObjectSchemaTest :
 
             test("success - non null") {
                 val user = User(1, "abc")
-                validator.tryValidate(user).shouldBeRight().first shouldBe user
+                validator.tryValidate(user).shouldBeRight()
             }
 
             test("success - null") {
-                validator.tryValidate(null).shouldBeRight().first shouldBe null
+                validator.tryValidate(null).shouldBeRight()
             }
         }
 
@@ -155,7 +155,7 @@ class ObjectSchemaTest :
 
             test("success") {
                 val user = User(1, "abc")
-                userSchema.tryValidate(user).shouldBeRight().first shouldBe user
+                userSchema.tryValidate(user).shouldBeRight()
             }
 
             test("failure - 1 constraint violated") {
@@ -205,7 +205,7 @@ class ObjectSchemaTest :
 
             test("success") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "def")))
-                employeeSchema.tryValidate(employee).shouldBeRight().first shouldBe employee
+                employeeSchema.tryValidate(employee).shouldBeRight()
             }
 
             test("failure") {
@@ -246,12 +246,12 @@ class ObjectSchemaTest :
 
             test("success - country is US") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "def"), country = "US", postalCode = "12345678"))
-                employeeSchema.tryValidate(employee).shouldBeRight().first shouldBe employee
+                employeeSchema.tryValidate(employee).shouldBeRight()
             }
 
             test("success - country is not US") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "def"), country = "JP", postalCode = "12345"))
-                employeeSchema.tryValidate(employee).shouldBeRight().first shouldBe employee
+                employeeSchema.tryValidate(employee).shouldBeRight()
             }
 
             test("failure - country is US") {
@@ -303,12 +303,12 @@ class ObjectSchemaTest :
 
             test("success") {
                 val person = Person(1, "abc", "def", Address(1, Street(1, "hij")))
-                personSchema.tryValidate(person).shouldBeRight().first shouldBe person
+                personSchema.tryValidate(person).shouldBeRight()
             }
 
             test("success - nullable") {
                 val person = Person(1, null, null, null)
-                personSchema.tryValidate(person).shouldBeRight().first shouldBe person
+                personSchema.tryValidate(person).shouldBeRight()
             }
 
             test("failure - isNotNull") {
@@ -369,7 +369,7 @@ class ObjectSchemaTest :
             val nodeSchema =
                 object : ObjectSchema<NodeWithValue>() {
                     val value = NodeWithValue::value { Kova.int().min(0).max(100) }
-                    val next = NodeWithValue::next { Kova.nullable<NodeWithValue>().then(this) }
+                    val next = NodeWithValue::next { Kova.nullable<NodeWithValue>().and(this.asNullable()) }
                 }
 
             test("circular reference detected - validation succeeds without error") {

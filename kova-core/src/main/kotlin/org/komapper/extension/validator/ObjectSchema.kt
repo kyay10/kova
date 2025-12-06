@@ -56,26 +56,24 @@ import kotlin.reflect.KProperty1
  */
 open class ObjectSchema<T : Any> private constructor(
     private val ruleMap: MutableMap<String, Rule>,
-    private val constraint: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit = {},
-) : Validator<T, T> {
+    private val constraint: Constraint<T> = {},
+) : (ValidationContext, RaiseAccumulate<FailureDetail>, T) -> Unit {
     /**
      * Creates an ObjectSchema with optional object-level constraints.
      *
      * @param block Lambda for defining constraints that validate relationships between properties
      */
-    constructor(block: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit = {}) : this(
+    constructor(block: Constraint<T> = {}) : this(
         mutableMapOf(),
         block
     )
 
-    context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-    override fun execute(input: T): Pair<T, ValidationContext> {
+    override fun invoke(c: ValidationContext, r: RaiseAccumulate<FailureDetail>, input: T) = context(c, r) {
         val klass = input::class
         val rootName = klass.qualifiedName ?: klass.simpleName ?: klass.toString()
         addRoot(rootName, input) {
             for ((key, rule) in ruleMap) accumulating { applyRule(input, key, rule) }
             constraint(input)
-            return input to contextOf<ValidationContext>()
         }
     }
 
@@ -83,7 +81,7 @@ open class ObjectSchema<T : Any> private constructor(
     private fun applyRule(input: T, key: String, rule: Rule) {
         val value = rule.transform(input)
         // If circular reference detected, terminate validation early with success
-        impure { addPathChecked(key, value) { rule.choose(input).execute(value) } }
+        impure { addPathChecked(key, value) { rule.choose(input)(value) } }
     }
 
     /**
@@ -97,12 +95,12 @@ open class ObjectSchema<T : Any> private constructor(
      */
     fun <V> replace(
         key: KProperty1<T, V>,
-        validator: IdentityValidator<V>,
+        validator: Constraint<V>,
     ): ObjectSchema<T> {
         val rule =
             Rule(
                 transform = { receiver: T -> key.get(receiver) } as (Any?) -> Any?,
-                choose = { _: T -> validator } as (Any?) -> IdentityValidator<Any?>,
+                choose = { _: T -> validator } as (Any?) -> Constraint<Any?>,
             )
         val newRuleMap = ruleMap.toMutableMap()
         newRuleMap.replace(key.name, rule)
@@ -127,7 +125,7 @@ open class ObjectSchema<T : Any> private constructor(
      * @param block Lambda that creates the validator for this property
      * @return The validator created by the block
      */
-    operator fun <V, VALIDATOR : Validator<V, V>> KProperty1<T, V>.invoke(block: () -> VALIDATOR): VALIDATOR {
+    operator fun <V, C : (ValidationContext, RaiseAccumulate<FailureDetail>, V) -> Unit> KProperty1<T, V>.invoke(block: () -> C): C {
         val validator = block()
         addRule(this) { _ -> validator }
         return validator
@@ -155,18 +153,18 @@ open class ObjectSchema<T : Any> private constructor(
      * @param block Lambda that chooses a validator based on the object
      * @return The block function for further use
      */
-    infix fun <V, VALIDATOR : IdentityValidator<V>> KProperty1<T, V>.choose(block: (T) -> VALIDATOR): (T) -> VALIDATOR {
+    infix fun <V, C: (ValidationContext, RaiseAccumulate<FailureDetail>, V) -> Unit> KProperty1<T, V>.choose(block: (T) -> C): (T) -> C {
         addRule(this, block)
         return block
     }
 
     private fun <T, V> addRule(
         key: KProperty1<T, V>,
-        choose: (T) -> Validator<V, V>,
+        choose: (T) -> Constraint<V>,
     ) {
         val transform = { receiver: T -> key.get(receiver) }
         transform as (Any?) -> Any?
-        choose as (Any?) -> IdentityValidator<Any?>
+        choose as (Any?) -> Constraint<Any?>
         ruleMap[key.name] = Rule(transform, choose)
     }
 
@@ -199,11 +197,11 @@ open class ObjectSchema<T : Any> private constructor(
 
 internal data class Rule(
     val transform: (Any?) -> Any?,
-    val choose: (Any?) -> IdentityValidator<Any?>,
+    val choose: (Any?) -> Constraint<Any?>,
 )
 
 class ObjectSchemaFactoryScope<T : Any>(
-    val validator: IdentityValidator<T>,
+    val validator: Constraint<T>,
 ) {
     /**
      * Binds a validator to a specific value, creating an ObjectFactory.
@@ -228,8 +226,13 @@ class ObjectSchemaFactoryScope<T : Any>(
      * @param value The input value to validate
      * @return An ObjectFactory that executes the validator with the bound value
      */
-    fun <IN, OUT> Validator<IN, OUT>.bind(value: IN): ObjectFactory<OUT> = ObjectFactory {
-        bindObject(value) { execute(value) }
+    fun <IN, OUT> Validator<IN, OUT>.bind(value: IN): ObjectFactory<OUT> = {
+        bindObject(value) { this(value) }
+    }
+
+    @JvmName("bindObject")
+    fun <IN> Constraint<IN>.bind(value: IN): ObjectFactory<IN> = {
+        bindObject(value) { value.also { this(value) } }
     }
 
     /**

@@ -10,7 +10,7 @@ import arrow.core.raise.context.RaiseAccumulate
  * @param K The key type of the map
  * @param V The value type of the map
  */
-typealias MapValidator<K, V> = IdentityValidator<Map<K, V>>
+typealias MapValidator<K, V, S> = Validator<Map<K, V>, S>
 
 /**
  * Validates that the map size is at least the specified minimum.
@@ -26,7 +26,7 @@ typealias MapValidator<K, V> = IdentityValidator<Map<K, V>>
  * @param message Custom error message provider
  * @return A new validator with the minimum size constraint
  */
-fun <K, V> MapValidator<K, V>.min(
+fun <K, V, S> MapValidator<K, V, S>.min(
     size: Int,
     message: MessageProvider2<Map<K, V>, Int, Int> = Message.resource2("kova.map.min"),
 ) = constrain(message.id) {
@@ -47,7 +47,7 @@ fun <K, V> MapValidator<K, V>.min(
  * @param message Custom error message provider
  * @return A new validator with the maximum size constraint
  */
-fun <K, V> MapValidator<K, V>.max(
+fun <K, V, S> MapValidator<K, V, S>.max(
     size: Int,
     message: MessageProvider2<Map<K, V>, Int, Int> = Message.resource2("kova.map.max"),
 ) = constrain(message.id) {
@@ -67,7 +67,7 @@ fun <K, V> MapValidator<K, V>.max(
  * @param message Custom error message provider
  * @return A new validator with the not-empty constraint
  */
-fun <K, V> MapValidator<K, V>.notEmpty(message: MessageProvider0<Map<K, V>> = Message.resource0("kova.map.notEmpty")) =
+fun <K, V, S> MapValidator<K, V, S>.notEmpty(message: MessageProvider0<Map<K, V>> = Message.resource0("kova.map.notEmpty")) =
     constrain(message.id) {
         satisfies(it.isNotEmpty()) { message(it) }
     }
@@ -86,7 +86,7 @@ fun <K, V> MapValidator<K, V>.notEmpty(message: MessageProvider0<Map<K, V>> = Me
  * @param message Custom error message provider
  * @return A new validator with the exact size constraint
  */
-fun <K, V> MapValidator<K, V>.length(
+fun <K, V, S> MapValidator<K, V, S>.length(
     size: Int,
     message: MessageProvider1<Map<K, V>, Int> = Message.resource1("kova.map.length"),
 ) = constrain(message.id) {
@@ -114,8 +114,8 @@ fun <K, V> MapValidator<K, V>.length(
  * @param validator The validator to apply to each entry
  * @return A new validator with per-entry validation
  */
-fun <K, V> MapValidator<K, V>.onEach(validator: Validator<Map.Entry<K, V>, *>) = constrain("kova.map.onEach") { map ->
-    appendPath("<map entry>") { map.validateOnEach { validator.execute(it) } }
+fun <K, V, S> MapValidator<K, V, S>.onEach(validator: Validator<Map.Entry<K, V>, *>) = constrain("kova.map.onEach") { map ->
+    appendPath("<map entry>") { map.validateOnEach { validator(it) } }
 }
 
 /**
@@ -137,8 +137,8 @@ fun <K, V> MapValidator<K, V>.onEach(validator: Validator<Map.Entry<K, V>, *>) =
  * @param validator The validator to apply to each key
  * @return A new validator with per-key validation
  */
-fun <K, V> MapValidator<K, V>.onEachKey(validator: Validator<K, *>) = constrain("kova.map.onEachKey") { map ->
-    appendPath("<map key>") { map.validateOnEach { validator.execute(it.key) } }
+fun <K, V, S> MapValidator<K, V, S>.onEachKey(validator: Validator<K, *>) = constrain("kova.map.onEachKey") { map ->
+    appendPath("<map key>") { map.validateOnEach { validator(it.key) } }
 }
 
 /**
@@ -160,8 +160,8 @@ fun <K, V> MapValidator<K, V>.onEachKey(validator: Validator<K, *>) = constrain(
  * @param validator The validator to apply to each value
  * @return A new validator with per-value validation
  */
-fun <K, V> MapValidator<K, V>.onEachValue(validator: Validator<V, *>) = constrain("kova.map.onEachValue") { map ->
-    map.validateOnEach { appendPath("[${it.key}]<map value>") { validator.execute(it.value) } }
+fun <K, V, S> MapValidator<K, V, S>.onEachValue(validator: Validator<V, *>) = constrain("kova.map.onEachValue") { map ->
+    map.validateOnEach { appendPath("[${it.key}]<map value>") { validator(it.value) } }
 }
 
 context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)

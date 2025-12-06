@@ -13,7 +13,7 @@ class ValidatorTest :
             val validator = Kova.int().min(1).max(10)
 
             test("success") {
-                shouldNotRaise { validator.validate(5) } shouldBe 5
+                shouldNotRaise { validator.validate(5) }
             }
 
             test("failure") {
@@ -73,9 +73,9 @@ class ValidatorTest :
         }
 
         context("map") {
-            val validator = Kova.int().min(1).map { it * 2 }
+            val validator = Kova.int().min(1) and { it * 2 }
             test("success") {
-                validator.tryValidate(2).shouldBeRight().first shouldBe 4
+                validator.tryValidate(2).shouldBeRight() shouldBe 4
             }
             test("failure") {
                 validator.tryValidate(-1).shouldBeLeft().shouldBeSingleton {
@@ -85,9 +85,12 @@ class ValidatorTest :
         }
 
         context("compose") {
-            val validator = Kova.string().max(1).compose(Kova.int().min(3).map { it.toString() })
+            val validator = Kova.int().min(3) and { it.toString() } then {
+                Kova.string().max(1)(it)
+                it
+            }
             test("success") {
-                validator.tryValidate(3).shouldBeRight().first shouldBe "3"
+                validator.tryValidate(3).shouldBeRight() shouldBe "3"
             }
             test("failure - first constraint violated") {
                 validator.tryValidate(2).shouldBeLeft().shouldBeSingleton {
@@ -102,14 +105,12 @@ class ValidatorTest :
         }
 
         context("andThen") {
-            val validator =
-                Kova
-                    .int()
-                    .min(3)
-                    .map { it.toString() }
-                    .then(Kova.string().max(1))
+            val validator = Kova.int().min(3) and { it.toString() } then {
+                Kova.string().max(1)(it)
+                it
+            }
             test("success") {
-                validator.tryValidate(3).shouldBeRight().first shouldBe "3"
+                validator.tryValidate(3).shouldBeRight() shouldBe "3"
             }
             test("failure - first constraint violated") {
                 validator.tryValidate(2).shouldBeLeft().shouldBeSingleton {
@@ -120,42 +121,6 @@ class ValidatorTest :
                 validator.tryValidate(10).shouldBeLeft().shouldBeSingleton {
                     it.message.content shouldBe "\"10\" must be at most 1 characters"
                 }
-            }
-        }
-
-        // TODO
-        xcontext("logs") {
-            val validator =
-                Kova
-                    .string()
-                    .trim()
-                    .min(3)
-                    .max(5)
-
-            test("success") {
-                val (value, context) = validator.tryValidate(" abcde ", ValidationConfig(logging = true))
-                    .shouldBeRight()
-                value shouldBe "abcde"
-                context.logs shouldBe
-                    listOf(
-                        "StringValidator(name=kova.string.max)",
-                        "Validator.chain",
-                        "Validator.map",
-                        "StringValidator(name=kova.string.min)",
-                        "Validator.chain",
-                        "Validator.map",
-                        "StringValidator(name=trim)",
-                        "Validator.chain",
-                        "Validator.map",
-                        "StringValidator(name=empty)",
-                        "Validator.chain",
-                        "Validator.map",
-                        "EmptyValidator",
-                        "ConstraintValidator(name=kova.satisfied)",
-                        "ConstraintValidator(name=kova.satisfied)",
-                        "ConstraintValidator(name=kova.string.min)",
-                        "ConstraintValidator(name=kova.string.max)",
-                    )
             }
         }
     })
