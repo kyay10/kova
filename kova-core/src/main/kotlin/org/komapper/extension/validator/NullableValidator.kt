@@ -3,6 +3,8 @@ package org.komapper.extension.validator
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import arrow.core.raise.context.Raise
+import org.komapper.extension.validator.Message
+import org.komapper.extension.validator.Message.Resource
 
 /**
  * Validates that the input is not null.
@@ -21,7 +23,7 @@ import arrow.core.raise.context.Raise
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-inline fun <T> T.notNull(message: () -> Message = { Message.Resource("kova.nullable.notNull") }): T & Any {
+inline fun <T> T.notNull(message: () -> Message = { Resource("kova.nullable.notNull") }): T & Any {
     contract {
         returns() implies (this@notNull != null)
         callsInPlace(message, InvocationKind.AT_MOST_ONCE)
@@ -32,7 +34,7 @@ inline fun <T> T.notNull(message: () -> Message = { Message.Resource("kova.nulla
 }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Any> T?.isNull(message: MessageProvider0<T> = Message.resource0("kova.nullable.isNull")) {
+inline fun <T : Any> T?.isNull(message: (T) -> Message = { Resource("kova.nullable.isNull", it) }) {
     contract { returns() implies (this@isNull == null) }
     satisfies(this == null) { message(this!!) }
 }

@@ -3,6 +3,7 @@ package org.komapper.extension.validator
 import arrow.core.raise.Accumulate
 import arrow.core.raise.context.Raise
 import arrow.core.toNonEmptyListOrNull
+import org.komapper.extension.validator.Message.Resource
 
 /**
  * Validates that the collection size is at least the specified minimum.
@@ -19,7 +20,7 @@ import arrow.core.toNonEmptyListOrNull
  * @return A new validator with the minimum size constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <C : Collection<*>> C.min(size: Int, message: MessageProvider2<C, Int, Int>) =
+inline fun <C : Collection<*>> C.min(size: Int, message: (C, Int, Int) -> Message) =
     satisfies(this.size >= size) { message(this, this.size, size) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -40,7 +41,7 @@ infix fun <C : Collection<*>> C.min(size: Int) = min(size, Message.resource2("ko
  * @return A new validator with the maximum size constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <C : Collection<*>> C.max(size: Int, message: MessageProvider2<C, Int, Int>) =
+inline fun <C : Collection<*>> C.max(size: Int, message: (C, Int, Int) -> Message) =
     satisfies(this.size <= size) { message(this, this.size, size) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -61,7 +62,7 @@ infix fun <C : Collection<*>> C.max(size: Int) = max(size, Message.resource2("ko
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <C : Collection<*>> C.notEmpty(message: MessageProvider0<C> = Message.resource0("kova.collection.notEmpty")) =
+inline fun <C : Collection<*>> C.notEmpty(message: (C) -> Message = { Resource("kova.collection.notEmpty", it) }) =
     toNonEmptyListOrNull().notNull { message(this) }
 
 /**
@@ -79,7 +80,7 @@ fun <C : Collection<*>> C.notEmpty(message: MessageProvider0<C> = Message.resour
  * @return A new validator with the exact size constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <C : Collection<*>> C.length(size: Int, message: MessageProvider1<C, Int>) =
+inline fun <C : Collection<*>> C.length(size: Int, message: (C, Int) -> Message) =
     satisfies(this.size == size) { message(this, size) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)

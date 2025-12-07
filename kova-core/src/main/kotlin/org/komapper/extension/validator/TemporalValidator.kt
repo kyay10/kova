@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
 import arrow.core.raise.context.Raise
+import org.komapper.extension.validator.Message.Resource
 import java.time.Clock
 
 /**
@@ -9,7 +10,7 @@ import java.time.Clock
  * @param message Custom error message provider
  */
 context(_: ValidationContext, _: Raise<FailureDetail>, _: TemporalNow<T>, _: Clock)
-fun <T : Comparable<T>> T.future(message: MessageProvider0<T> = Message.resource0("kova.temporal.future")) =
+inline fun <T : Comparable<T>> T.future(message: (T) -> Message = { Resource("kova.temporal.future", it) }) =
     satisfies(this > now()) { message(this) }
 
 /**
@@ -18,8 +19,9 @@ fun <T : Comparable<T>> T.future(message: MessageProvider0<T> = Message.resource
  * @param message Custom error message provider
  */
 context(_: ValidationContext, _: Raise<FailureDetail>, _: TemporalNow<T>, _: Clock)
-fun <T : Comparable<T>> T.futureOrPresent(message: MessageProvider0<T> = Message.resource0("kova.temporal.futureOrPresent")) =
-    satisfies(this >= now()) { message(this) }
+inline fun <T : Comparable<T>> T.futureOrPresent(
+    message: (T) -> Message = { Resource("kova.temporal.futureOrPresent", it) }
+) = satisfies(this >= now()) { message(this) }
 
 /**
  * Validates that the temporal value is in the past (strictly less than now).
@@ -27,7 +29,7 @@ fun <T : Comparable<T>> T.futureOrPresent(message: MessageProvider0<T> = Message
  * @param message Custom error message provider
  */
 context(_: ValidationContext, _: Raise<FailureDetail>, _: TemporalNow<T>, _: Clock)
-fun <T : Comparable<T>> T.past(message: MessageProvider0<T> = Message.resource0("kova.temporal.past")) =
+inline fun <T : Comparable<T>> T.past(message: (T) -> Message = { Resource("kova.temporal.past", it) }) =
     satisfies(this < now()) { message(this) }
 
 /**
@@ -36,5 +38,6 @@ fun <T : Comparable<T>> T.past(message: MessageProvider0<T> = Message.resource0(
  * @param message Custom error message provider
  */
 context(_: ValidationContext, _: Raise<FailureDetail>, _: TemporalNow<T>, _: Clock)
-fun <T : Comparable<T>> T.pastOrPresent(message: MessageProvider0<T> = Message.resource0("kova.temporal.pastOrPresent")) =
-    satisfies(this <= now()) { message(this) }
+inline fun <T : Comparable<T>> T.pastOrPresent(
+    message: (T) -> Message = { Resource("kova.temporal.pastOrPresent", it) }
+) = satisfies(this <= now()) { message(this) }

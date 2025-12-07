@@ -2,6 +2,7 @@ package org.komapper.extension.validator
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.raise
+import org.komapper.extension.validator.Message.Resource
 import kotlin.reflect.KClass
 
 /**
@@ -19,7 +20,7 @@ import kotlin.reflect.KClass
  * @return A new validator with the minimum length constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.min(length: Int, message: MessageProvider1<String, Int>) =
+inline fun String.min(length: Int, message: (String, Int) -> Message) =
     satisfies(this.length >= length) { message(this, length) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -40,7 +41,7 @@ infix fun String.min(length: Int) = min(length, Message.resource1("kova.string.m
  * @return A new validator with the maximum length constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.max(length: Int, message: MessageProvider1<String, Int>) =
+inline fun String.max(length: Int, message: (String, Int) -> Message) =
     satisfies(this.length <= length) { message(this, length) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -61,7 +62,7 @@ infix fun String.max(length: Int) = max(length, Message.resource1("kova.string.m
  * @return A new validator with the not-blank constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.notBlank(message: MessageProvider0<String> = Message.resource0("kova.string.notBlank")) =
+inline fun String.notBlank(message: (String) -> Message = { Resource("kova.string.notBlank", it) }) =
     satisfies(isNotBlank()) { message(this) }
 
 /**
@@ -79,7 +80,7 @@ fun String.notBlank(message: MessageProvider0<String> = Message.resource0("kova.
  * @return A new validator with the not-empty constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.notEmpty(message: MessageProvider0<String> = Message.resource0("kova.string.notEmpty")) =
+inline fun String.notEmpty(message: (String) -> Message = { Resource("kova.string.notEmpty", it) }) =
     satisfies(isNotEmpty()) { message(this) }
 
 /**
@@ -97,7 +98,7 @@ fun String.notEmpty(message: MessageProvider0<String> = Message.resource0("kova.
  * @return A new validator with the exact length constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.length(length: Int, message: MessageProvider1<String, Int>) =
+inline fun String.length(length: Int, message: (String, Int) -> Message) =
     satisfies(this.length == length) { message(this, length) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -118,7 +119,7 @@ infix fun String.length(length: Int) = length(length, Message.resource1("kova.st
  * @return A new validator with the starts-with constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.startsWith(prefix: CharSequence, message: MessageProvider1<String, CharSequence>) =
+inline fun String.startsWith(prefix: CharSequence, message: (String, CharSequence) -> Message) =
     satisfies(startsWith(prefix, ignoreCase = false)) { message(this, prefix) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -139,7 +140,7 @@ infix fun String.startsWith(prefix: CharSequence) = startsWith(prefix, Message.r
  * @return A new validator with the ends-with constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.endsWith(suffix: CharSequence, message: MessageProvider1<String, CharSequence>) =
+inline fun String.endsWith(suffix: CharSequence, message: (String, CharSequence) -> Message) =
     satisfies(endsWith(suffix, ignoreCase = false)) { message(this, suffix) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -160,7 +161,7 @@ infix fun String.endsWith(suffix: CharSequence) = endsWith(suffix, Message.resou
  * @return A new validator with the contains constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.contains(infix: CharSequence, message: MessageProvider1<String, CharSequence>) =
+inline fun String.contains(infix: CharSequence, message: (String, CharSequence) -> Message) =
     satisfies(infix in this) { message(this, infix) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -181,13 +182,14 @@ infix fun String.contains(infix: CharSequence) = contains(infix, Message.resourc
  * @return A new validator with the regex constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.matches(pattern: Regex, message: MessageProvider1<String, Regex>) =
+inline fun String.matches(pattern: Regex, message: (String, Regex) -> Message) =
     satisfies(pattern matches this) { message(this, pattern) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun String.matches(pattern: Regex) = matches(pattern, Message.resource1("kova.string.matches"))
 
-private val emailPattern = Regex(
+@PublishedApi
+internal val emailPattern = Regex(
     "^(?!\\.)(?!.*\\.\\.)([a-z0-9_'+\\-\\.]*)[a-z0-9_+-]@([a-z0-9][a-z0-9\\-]*\\.)+[a-z]{2,}\$",
     RegexOption.IGNORE_CASE
 )
@@ -208,7 +210,7 @@ private val emailPattern = Regex(
  * @return A new validator with the email constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.email(message: MessageProvider0<String> = Message.resource0("kova.string.email")) =
+inline fun String.email(message: (String) -> Message = { Resource("kova.string.email", it) }) =
     satisfies(emailPattern matches this) { message(this) }
 
 /**
@@ -227,7 +229,7 @@ fun String.email(message: MessageProvider0<String> = Message.resource0("kova.str
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isInt(message: MessageProvider0<String> = Message.resource0("kova.string.isInt")) =
+inline fun String.isInt(message: (String) -> Message = { Resource("kova.string.isInt", it) }) =
     toIntOrNull().notNull { message(this) }
 
 /**
@@ -245,7 +247,7 @@ fun String.isInt(message: MessageProvider0<String> = Message.resource0("kova.str
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isLong(message: MessageProvider0<String> = Message.resource0("kova.string.isLong")) =
+inline fun String.isLong(message: (String) -> Message = { Resource("kova.string.isLong", it) }) =
     toLongOrNull().notNull { message(this) }
 
 /**
@@ -263,7 +265,7 @@ fun String.isLong(message: MessageProvider0<String> = Message.resource0("kova.st
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isShort(message: MessageProvider0<String> = Message.resource0("kova.string.isShort")) =
+inline fun String.isShort(message: (String) -> Message = { Resource("kova.string.isShort", it) }) =
     toShortOrNull().notNull { message(this) }
 
 /**
@@ -281,7 +283,7 @@ fun String.isShort(message: MessageProvider0<String> = Message.resource0("kova.s
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isByte(message: MessageProvider0<String> = Message.resource0("kova.string.isByte")) =
+inline fun String.isByte(message: (String) -> Message = { Resource("kova.string.isByte", it) }) =
     toByteOrNull().notNull { message(this) }
 
 /**
@@ -299,7 +301,7 @@ fun String.isByte(message: MessageProvider0<String> = Message.resource0("kova.st
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isDouble(message: MessageProvider0<String> = Message.resource0("kova.string.isDouble")) =
+inline fun String.isDouble(message: (String) -> Message = { Resource("kova.string.isDouble", it) }) =
     toDoubleOrNull().notNull { message(this) }
 
 /**
@@ -317,7 +319,7 @@ fun String.isDouble(message: MessageProvider0<String> = Message.resource0("kova.
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isFloat(message: MessageProvider0<String> = Message.resource0("kova.string.isFloat")) =
+inline fun String.isFloat(message: (String) -> Message = { Resource("kova.string.isFloat", it) }) =
     toFloatOrNull().notNull { message(this) }
 
 /**
@@ -335,7 +337,7 @@ fun String.isFloat(message: MessageProvider0<String> = Message.resource0("kova.s
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isBigDecimal(message: MessageProvider0<String> = Message.resource0("kova.string.isBigDecimal")) =
+inline fun String.isBigDecimal(message: (String) -> Message = { Resource("kova.string.isBigDecimal", it) }) =
     toBigDecimalOrNull().notNull { message(this) }
 
 /**
@@ -353,7 +355,7 @@ fun String.isBigDecimal(message: MessageProvider0<String> = Message.resource0("k
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isBigInteger(message: MessageProvider0<String> = Message.resource0("kova.string.isBigInteger")) =
+inline fun String.isBigInteger(message: (String) -> Message = { Resource("kova.string.isBigInteger", it) }) =
     toBigIntegerOrNull().notNull { message(this) }
 
 /**
@@ -374,7 +376,7 @@ fun String.isBigInteger(message: MessageProvider0<String> = Message.resource0("k
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isBoolean(message: MessageProvider0<String> = Message.resource0("kova.string.isBoolean")) =
+inline fun String.isBoolean(message: (String) -> Message = { Resource("kova.string.isBoolean", it) }) =
     toBooleanStrictOrNull().notNull { message(this) }
 
 /**
@@ -394,8 +396,9 @@ fun String.isBoolean(message: MessageProvider0<String> = Message.resource0("kova
  */
 @IgnorableReturnValue
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <E : Enum<E>> String.isEnum(
-    klass: KClass<E>, message: MessageProvider1<String, List<String>> = Message.resource1("kova.string.isEnum"),
+inline fun <E : Enum<E>> String.isEnum(
+    klass: KClass<E>,
+    message: (String, List<String>) -> Message = { input, arg1 -> Resource("kova.string.isEnum", input, arg1) }
 ): E = try {
     java.lang.Enum.valueOf(klass.java, this)
 } catch (_: IllegalArgumentException) {
@@ -437,7 +440,7 @@ inline fun <reified E : Enum<E>> String.isEnum(): E = try {
  * @return A new validator with the uppercase constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isUppercase(message: MessageProvider0<String> = Message.resource0("kova.string.uppercase")) =
+inline fun String.isUppercase(message: (String) -> Message = { Resource("kova.string.uppercase", it) }) =
     satisfies(this == uppercase()) { message(this) }
 
 /**
@@ -454,5 +457,5 @@ fun String.isUppercase(message: MessageProvider0<String> = Message.resource0("ko
  * @return A new validator with the lowercase constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun String.isLowercase(message: MessageProvider0<String> = Message.resource0("kova.string.lowercase")) =
+inline fun String.isLowercase(message: (String) -> Message = { Resource("kova.string.lowercase", it) }) =
     satisfies(this == lowercase()) { message(this) }

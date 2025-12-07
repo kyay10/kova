@@ -1,96 +1,10 @@
 package org.komapper.extension.validator
 
-/**
- * Provides error messages for validation failures with no additional arguments.
- *
- * Use this for validators that don't need to include dynamic values in error messages.
- *
- * Example:
- * ```kotlin
- * val notBlankMessage = Message.text0<String> { input ->
- *     "Value must not be blank"
- * }
- * ```
- *
- * @param T The type being validated
- */
-interface MessageProvider0<T> {
-    /** The message identifier */
-    val id: String
-
-    /**
-     * Creates a message for the given input.
-     *
-     * @param input The input value
-     * @return The error message
-     */
-    operator fun invoke(input: T): Message
-}
+import org.komapper.extension.validator.Message.Resource
+import org.komapper.extension.validator.Message.Text
 
 /**
- * Provides error messages for validation failures with one additional argument.
- *
- * Use this for validators that include one dynamic value in error messages,
- * such as a minimum/maximum value.
- *
- * Example:
- * ```kotlin
- * val minMessage = Message.text1<String, Int> { input, min ->
- *     "Value must be at least $min characters, but was ${input.length}"
- * }
- * ```
- *
- * @param T The type being validated
- * @param A1 The type of the first argument
- */
-interface MessageProvider1<T, A1> {
-    /** The message identifier */
-    val id: String
-
-    /**
-     * Creates a message for the given constraint context and argument.
-     *
-     * @param input The input value
-     * @param arg1 The first argument to include in the message
-     * @return The error message
-     */
-    operator fun invoke(input: T, arg1: A1): Message
-}
-
-/**
- * Provides error messages for validation failures with two additional arguments.
- *
- * Use this for validators that include two dynamic values in error messages,
- * such as a range with minimum and maximum values.
- *
- * Example:
- * ```kotlin
- * val rangeMessage = Message.text2<Int, Int, Int> { input, min, max ->
- *     "Value must be between $min and $max, but was $input"
- * }
- * ```
- *
- * @param T The type being validated
- * @param A1 The type of the first argument
- * @param A2 The type of the second argument
- */
-interface MessageProvider2<T, A1, A2> {
-    /** The message identifier */
-    val id: String
-
-    /**
-     * Creates a message for the given constraint context and arguments.
-     *
-     * @param input The input value
-     * @param arg1 The first argument to include in the message
-     * @param arg2 The second argument to include in the message
-     * @return The error message
-     */
-    operator fun invoke(input: T, arg1: A1, arg2: A2): Message
-}
-
-/**
- * Factory for creating [MessageProvider0] instances.
+ * Factory for creating Message providers
  *
  * Available through `Message.text0()` and `Message.resource0()`.
  */
@@ -107,15 +21,10 @@ interface MessageProvider0Factory {
      * }): NumberValidator<Int>
      * ```
      *
-     * @param id Optional identifier for this message provider
      * @param get Function that generates the message text
      * @return A message provider
      */
-    fun <T> text0(id: String = "", get: (T) -> String): MessageProvider0<T> = object : MessageProvider0<T> {
-        override val id: String = id
-
-        override fun invoke(input: T): Message = Message.Text(id, get(input))
-    }
+    fun <T> text0(get: (T) -> String): (T) -> Message = { Text(get(it)) }
 
     /**
      * Creates a resource bundle-based message provider with no arguments.
@@ -130,15 +39,11 @@ interface MessageProvider0Factory {
      * @param id The resource bundle key
      * @return A message provider that loads messages from resources
      */
-    fun <T> resource0(id: String): MessageProvider0<T> = object : MessageProvider0<T> {
-        override val id: String = id
-
-        override fun invoke(input: T): Message = Message.Resource(id, input)
-    }
+    fun <T> resource0(id: String): (T) -> Message = { Resource(id, it) }
 }
 
 /**
- * Factory for creating [MessageProvider1] instances.
+ * Factory for creating Message providers
  *
  * Available through `Message.text1()` and `Message.resource1()`.
  */
@@ -158,16 +63,10 @@ interface MessageProvider1Factory {
      * ): StringValidator
      * ```
      *
-     * @param id Optional identifier for this message provider
      * @param get Function that generates the message text from context and argument
      * @return A message provider
      */
-    fun <T, A1> text1(id: String = "", get: (T, A1) -> String): MessageProvider1<T, A1> =
-        object : MessageProvider1<T, A1> {
-            override val id: String = id
-
-            override fun invoke(input: T, arg1: A1): Message = Message.Text(id, get(input, arg1))
-        }
+    fun <T, A1> text1(get: (T, A1) -> String): (T, A1) -> Message = { input, arg -> Text(get(input, arg)) }
 
     /**
      * Creates a resource bundle-based message provider with one argument.
@@ -191,15 +90,11 @@ interface MessageProvider1Factory {
      * @param id The resource bundle key
      * @return A message provider that loads messages from resources
      */
-    fun <T, A1> resource1(id: String): MessageProvider1<T, A1> = object : MessageProvider1<T, A1> {
-        override val id: String = id
-
-        override fun invoke(input: T, arg1: A1): Message = Message.Resource(id, input, arg1)
-    }
+    fun <T, A1> resource1(id: String): (T, A1) -> Message = { input, arg1 -> Resource(id, input, arg1) }
 }
 
 /**
- * Factory for creating [MessageProvider2] instances.
+ * Factory for creating Message providers
  *
  * Available through `Message.text2()` and `Message.resource2()`.
  */
@@ -220,16 +115,12 @@ interface MessageProvider2Factory {
      * ): NumberValidator<Int>
      * ```
      *
-     * @param id Optional identifier for this message provider
      * @param get Function that generates the message text from context and arguments
      * @return A message provider
      */
-    fun <T, A1, A2> text2(id: String = "", get: (T, A1, A2) -> String): MessageProvider2<T, A1, A2> =
-        object : MessageProvider2<T, A1, A2> {
-            override val id: String = id
-
-            override fun invoke(input: T, arg1: A1, arg2: A2): Message = Message.Text(id, get(input, arg1, arg2))
-        }
+    fun <T, A1, A2> text2(get: (T, A1, A2) -> String): (T, A1, A2) -> Message = { input, arg1, arg2 ->
+        Text(get(input, arg1, arg2))
+    }
 
     /**
      * Creates a resource bundle-based message provider with two arguments.
@@ -254,9 +145,7 @@ interface MessageProvider2Factory {
      * @param id The resource bundle key
      * @return A message provider that loads messages from resources
      */
-    fun <T, A1, A2> resource2(id: String): MessageProvider2<T, A1, A2> = object : MessageProvider2<T, A1, A2> {
-        override val id: String = id
-
-        override fun invoke(input: T, arg1: A1, arg2: A2): Message = Message.Resource(id, input, arg1, arg2)
+    fun <T, A1, A2> resource2(id: String): (T, A1, A2) -> Message = { input, arg1, arg2 ->
+        Resource(id, input, arg1, arg2)
     }
 }

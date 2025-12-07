@@ -17,7 +17,7 @@ import arrow.core.raise.context.Raise
  * @return A new validator that accepts only the specified value
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T> T.literal(value: T, message: MessageProvider1<T, T>) =
+inline fun <T> T.literal(value: T, message: (T, T) -> Message) =
     satisfies(this == value) { message(this, value) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -38,7 +38,7 @@ infix fun <T> T.literal(value: T) = literal(value, Message.resource1("kova.liter
  * @return A new validator that accepts only values from the list
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T> T.literal(values: List<T>, message: MessageProvider1<T, List<T>>) =
+inline fun <T> T.literal(values: List<T>, message: (T, List<T>) -> Message) =
     satisfies(this in values) { message(this, values) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)

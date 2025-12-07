@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
 import arrow.core.raise.context.Raise
+import org.komapper.extension.validator.Message.Resource
 
 /**
  * Validates that the number is greater than or equal to the specified minimum value.
@@ -17,7 +18,7 @@ import arrow.core.raise.context.Raise
  * @return A new validator with the minimum constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Comparable<T>> T.min(value: T, message: MessageProvider1<T, T>) =
+inline fun <T : Comparable<T>> T.min(value: T, message: (T, T) -> Message) =
     satisfies(this >= value) { message(this, value) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -38,7 +39,7 @@ infix fun <T : Comparable<T>> T.min(value: T) = min(value, Message.resource1("ko
  * @return A new validator with the maximum constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Comparable<T>> T.max(value: T, message: MessageProvider1<T, T>) =
+inline fun <T : Comparable<T>> T.max(value: T, message: (T, T) -> Message) =
     satisfies(this <= value) { message(this, value) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -60,7 +61,7 @@ infix fun <T : Comparable<T>> T.max(value: T) = max(value, Message.resource1("ko
  * @return A new validator with the greater-than constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Comparable<T>> T.gt(value: T, message: MessageProvider1<T, T>) =
+inline fun <T : Comparable<T>> T.gt(value: T, message: (T, T) -> Message) =
     satisfies(this > value) { message(this, value) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -82,7 +83,7 @@ infix fun <T : Comparable<T>> T.gt(value: T) = gt(value, Message.resource1("kova
  * @return A new validator with the greater-than-or-equal constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Comparable<T>> T.gte(value: T, message: MessageProvider1<T, T>) = min(value, message)
+inline fun <T : Comparable<T>> T.gte(value: T, message: (T, T) -> Message) = min(value, message)
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun <T : Comparable<T>> T.gte(value: T) = gte(value, Message.resource1("kova.number.gte"))
@@ -103,7 +104,7 @@ infix fun <T : Comparable<T>> T.gte(value: T) = gte(value, Message.resource1("ko
  * @return A new validator with the less-than constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Comparable<T>> T.lt(value: T, message: MessageProvider1<T, T>) =
+inline fun <T : Comparable<T>> T.lt(value: T, message: (T, T) -> Message) =
     satisfies(this < value) { message(this, value) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -125,7 +126,7 @@ infix fun <T : Comparable<T>> T.lt(value: T) = lt(value, Message.resource1("kova
  * @return A new validator with the less-than-or-equal constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Comparable<T>> T.lte(value: T, message: MessageProvider1<T, T>) = max(value, message)
+inline fun <T : Comparable<T>> T.lte(value: T, message: (T, T) -> Message) = max(value, message)
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun <T : Comparable<T>> T.lte(value: T) = lte(value, Message.resource1("kova.number.lte"))
@@ -145,7 +146,7 @@ infix fun <T : Comparable<T>> T.lte(value: T) = lte(value, Message.resource1("ko
  * @return A new validator with the positive constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Number> T.positive(message: MessageProvider0<T> = Message.resource0("kova.number.positive")) =
+inline fun <T : Number> T.positive(message: (T) -> Message = { Resource("kova.number.positive", it) }) =
     satisfies(toDouble() > 0.0) { message(this) }
 
 /**
@@ -163,7 +164,7 @@ fun <T : Number> T.positive(message: MessageProvider0<T> = Message.resource0("ko
  * @return A new validator with the negative constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Number> T.negative(message: MessageProvider0<T> = Message.resource0("kova.number.negative")) =
+inline fun <T : Number> T.negative(message: (T) -> Message = { Resource("kova.number.negative", it) }) =
     satisfies(toDouble() < 0.0) { message(this) }
 
 /**
@@ -181,7 +182,7 @@ fun <T : Number> T.negative(message: MessageProvider0<T> = Message.resource0("ko
  * @return A new validator with the not-positive constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Number> T.notPositive(message: MessageProvider0<T> = Message.resource0("kova.number.notPositive")) =
+inline fun <T : Number> T.notPositive(message: (T) -> Message = { Resource("kova.number.notPositive", it) }) =
     satisfies(toDouble() <= 0.0) { message(this) }
 
 /**
@@ -199,5 +200,5 @@ fun <T : Number> T.notPositive(message: MessageProvider0<T> = Message.resource0(
  * @return A new validator with the not-negative constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <T : Number> T.notNegative(message: MessageProvider0<T> = Message.resource0("kova.number.notNegative")) =
+inline fun <T : Number> T.notNegative(message: (T) -> Message = { Resource("kova.number.notNegative", it) }) =
     satisfies(toDouble() >= 0.0) { message(this) }

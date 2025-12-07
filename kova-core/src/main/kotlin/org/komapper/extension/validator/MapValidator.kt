@@ -3,6 +3,7 @@ package org.komapper.extension.validator
 import arrow.core.raise.Accumulate
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
+import org.komapper.extension.validator.Message.Resource
 
 /**
  * Validates that the map size is at least the specified minimum.
@@ -19,7 +20,7 @@ import arrow.core.raise.context.RaiseAccumulate
  * @return A new validator with the minimum size constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <K, V> Map<K, V>.min(size: Int, message: MessageProvider2<Map<K, V>, Int, Int>) =
+inline fun <K, V> Map<K, V>.min(size: Int, message: (Map<K, V>, Int, Int) -> Message) =
     satisfies(this.size >= size) { message(this, this.size, size) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -40,7 +41,7 @@ infix fun <K, V> Map<K, V>.min(size: Int) = min(size, Message.resource2("kova.ma
  * @return A new validator with the maximum size constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <K, V> Map<K, V>.max(size: Int, message: MessageProvider2<Map<K, V>, Int, Int>) =
+inline fun <K, V> Map<K, V>.max(size: Int, message: (Map<K, V>, Int, Int) -> Message) =
     satisfies(this.size <= size) { message(this, this.size, size) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)
@@ -60,7 +61,7 @@ infix fun <K, V> Map<K, V>.max(size: Int) = max(size, Message.resource2("kova.ma
  * @return A new validator with the not-empty constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <K, V> Map<K, V>.notEmpty(message: MessageProvider0<Map<K, V>> = Message.resource0("kova.map.notEmpty")) =
+inline fun <K, V> Map<K, V>.notEmpty(message: (Map<K, V>) -> Message = { Resource("kova.map.notEmpty", it) }) =
     satisfies(isNotEmpty()) { message(this) }
 
 /**
@@ -78,7 +79,7 @@ fun <K, V> Map<K, V>.notEmpty(message: MessageProvider0<Map<K, V>> = Message.res
  * @return A new validator with the exact size constraint
  */
 context(_: ValidationContext, _: Raise<FailureDetail>)
-fun <K, V> Map<K, V>.length(size: Int, message: MessageProvider1<Map<K, V>, Int>) =
+inline fun <K, V> Map<K, V>.length(size: Int, message: (Map<K, V>, Int) -> Message) =
     satisfies(this.size == size) { message(this, size) }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)

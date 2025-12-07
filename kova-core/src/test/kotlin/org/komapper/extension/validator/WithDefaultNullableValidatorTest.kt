@@ -5,6 +5,7 @@ import arrow.core.raise.context.Raise
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
+@Suppress("USELESS_ELVIS_LEFT_IS_NULL")
 class WithDefaultNullableValidatorTest :
     FunSpec({
 

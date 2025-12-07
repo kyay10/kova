@@ -38,15 +38,10 @@ sealed interface Message {
      * Example:
      * ```kotlin
      * Message.Text("Value must be positive")
-     * Message.Text(id = "positive", content = "Value must be positive")
+     * Message.Text(content = "Value must be positive")
      * ```
      */
-    data class Text(
-        override val id: String? = null,
-        override val content: String,
-    ) : Message {
-        constructor(content: String) : this(null, content)
-    }
+    data class Text(override val content: String) : Message
 
     /**
      * A message loaded from a resource bundle for i18n support.
