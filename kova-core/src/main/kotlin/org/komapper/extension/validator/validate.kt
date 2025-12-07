@@ -27,29 +27,6 @@ import kotlin.contracts.contract
 typealias Validation<R> = context(ValidationContext, RaiseAccumulate<FailureDetail>) () -> R
 
 /**
- * Validates the input
- *
- * This is the recommended way to perform validation when you want to handle
- * both success and failure cases programmatically.
- *
- * Example:
- * ```kotlin
- * val validation = Kova.string().min(1).max(10)
- * when (val result = validation.tryValidate("hello")) {
- *     is Either.Right -> println("Valid: ${result.value.first}")
- *     is Either.Left -> println("Errors: ${result.value}")
- * }
- * ```
- *
- * @param failFast Whether to stop at the first failure or accumulate all failures
- * @return the validated value
- */
-inline fun <R> tryValidate(failFast: Boolean = false, validation: Validation<R>): EitherNel<FailureDetail, R> {
-    contract { callsInPlace(validation, InvocationKind.AT_MOST_ONCE) }
-    return either { validate(failFast, validation) }
-}
-
-/**
  * Validates the input and returns the validated value, or throws an exception on failure.
  *
  * Use this when you want validation failures to throw exceptions rather than
@@ -72,9 +49,7 @@ inline fun <R> tryValidate(failFast: Boolean = false, validation: Validation<R>)
 context(_: Raise<Nel<FailureDetail>>)
 inline fun <R> validate(failFast: Boolean = false, validation: Validation<R>): R {
     contract { callsInPlace(validation, InvocationKind.EXACTLY_ONCE) }
-    context(ValidationContext(failFast = failFast)) {
-        return accumulateUnless(failFast) { validation() }
-    }
+    return accumulateUnless(failFast) { context(ValidationContext(failFast = failFast)) { validation() } }
 }
 
 context(c: ValidationContext)
