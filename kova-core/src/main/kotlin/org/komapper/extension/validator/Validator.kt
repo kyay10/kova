@@ -1,26 +1,30 @@
 package org.komapper.extension.validator
 
+import arrow.core.Either
 import arrow.core.EitherNel
 import arrow.core.Nel
+import arrow.core.handleErrorWith
+import arrow.core.nel
+import arrow.core.raise.RaiseAccumulate.Value
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
-import arrow.core.raise.context.either
-import arrow.core.raise.context.raise
-import arrow.core.raise.merge
+import arrow.core.raise.context.bind
+import arrow.core.raise.context.bindOrAccumulate
+import arrow.core.raise.either
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 /**
  * Core validator interface for type-safe validation.
  *
- * A validator transforms an input of type [IN] into an output of type [OUT],
+ * A validator does some validation, producing an output of type [R],
  * or raises a validation failure with detailed error information.
  *
- * Validators are immutable and composable using operators like [plus], [and], [or],
- * [map], [then], and [chain].
+ * Validators are immutable and composable using normal function composition
  *
- * @param IN The input type to validate
- * @param OUT The output type after successful validation
+ * @param R The output type after successful validation
  */
-typealias Validator<IN, OUT> = context(ValidationContext, RaiseAccumulate<FailureDetail>) (IN) -> OUT
+typealias Validator<R> = context(ValidationContext, RaiseAccumulate<FailureDetail>) () -> R
 
 /**
  * Validates the input
@@ -37,14 +41,16 @@ typealias Validator<IN, OUT> = context(ValidationContext, RaiseAccumulate<Failur
  * }
  * ```
  *
- * @param input The value to validate
  * @param config Configuration options for validation (failFast, logging)
  * @return the validated value
  */
-fun <IN, OUT> Validator<IN, OUT>.tryValidate(
-    input: IN,
-    config: ValidationConfig = ValidationConfig()
-): EitherNel<FailureDetail, OUT> = either { validate(input, config) }
+inline fun <R> tryValidate(
+    config: ValidationConfig = ValidationConfig(),
+    validator: Validator<R>
+): EitherNel<FailureDetail, R> {
+    contract { callsInPlace(validator, InvocationKind.AT_MOST_ONCE) }
+    return either { validate(config, validator) }
+}
 
 /**
  * Validates the input and returns the validated value, or throws an exception on failure.
@@ -63,102 +69,76 @@ fun <IN, OUT> Validator<IN, OUT>.tryValidate(
  * }
  * ```
  *
- * @param input The value to validate
  * @param config Configuration options for validation (failFast, logging)
- * @return The validated value of type [OUT]
+ * @return The validated value of type [R]
  */
 context(_: Raise<Nel<FailureDetail>>)
-fun <IN, OUT> Validator<IN, OUT>.validate(
-    input: IN,
-    config: ValidationConfig = ValidationConfig()
-): OUT = context(ValidationContext(config = config)) { accumulateUnless(failFast) { this(input) } }
-
-/**
- * Operator overload for [and]. Combines two validators that both must succeed.
- *
- * Example:
- * ```kotlin
- * val validator = Kova.string().min(3) + Kova.string().max(10)
- * // Equivalent to: Kova.string().min(3).max(10)
- * ```
- */
-operator fun <IN, OUT> Constraint<IN>.plus(other: Validator<IN, OUT>): Validator<IN, OUT> = this and other
-
-/**
- * Combines two validators where both must succeed for the overall validation to succeed.
- *
- * If either validator fails, the failure is included in the result. With failFast enabled,
- * execution stops at the first failure.
- *
- * Example:
- * ```kotlin
- * val nameValidator = Kova.string().min(1) and Kova.string().max(50)
- * val ageValidator = Kova.int().min(0) and Kova.int().max(120)
- * ```
- *
- * @param other The second validator to apply
- * @return A new validator that succeeds only if both validators succeed
- */
-infix fun <IN, OUT> Constraint<IN>.and(other: Validator<IN, OUT>): Validator<IN, OUT> = { input ->
-    addLog("Validator.and") {
-        accumulating { this(input) }
-        other(input)
+inline fun <R> validate(config: ValidationConfig = ValidationConfig(), validator: Validator<R>): R {
+    contract { callsInPlace(validator, InvocationKind.EXACTLY_ONCE) }
+    context(ValidationContext(config = config)) {
+        or {
+            val result = validator()
+            contextOf<RaiseAccumulate<FailureDetail>>().latestError?.value // raise if any accumulated errors
+            return result
+        }.bind()
     }
 }
 
-infix fun <IN, OUT> Constraint<IN>.andThen(other: Validator<IN, OUT>): Validator<IN, OUT> = { input ->
-    addLog("Validator.andThen") {
-        this(input)
-        other(input)
-    }
+context(_: ValidationContext)
+inline fun <R> or(validator: Validator<R>): EitherNel<FailureDetail, R> {
+    contract { callsInPlace(validator, InvocationKind.AT_MOST_ONCE) }
+    return either { accumulateUnless(failFast) { validator() } }
 }
 
-/**
- * Combines two validators where at least one must succeed for the overall validation to succeed.
- *
- * If the first validator succeeds, the second is not executed. If both fail,
- * a composite failure containing both error branches is returned.
- *
- * Example:
- * ```kotlin
- * // Accept either a short string or a string starting with "LONG:"
- * val validator = Kova.string().max(10) or
- *     (Kova.string().min(6).startsWith("LONG:"))
- * ```
- *
- * @param other The alternative validator to try if this one fails
- * @return A new validator that succeeds if either validator succeeds
- */
-infix fun <IN, OUT> Validator<IN, OUT>.or(other: Validator<IN, OUT>): Validator<IN, OUT> =
-    validator@{ input ->
-        addLog("Validator.or") {
-            val selfDetails = merge { return@validator accumulateUnless(failFast) { this@or(input) } }
-            val otherDetails = merge { return@validator accumulateUnless(failFast) { other(input) } }
-            raise(CompositeFailureDetail(contextOf<ValidationContext>(), first = selfDetails, second = otherDetails))
-        }
+context(_: ValidationContext, _: Raise<FailureDetail>)
+inline fun <T : Any> T?.isNullOr(validator: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit) {
+    contract {
+        callsInPlace(validator, InvocationKind.AT_MOST_ONCE)
+        (this@isNullOr != null) holdsIn validator
     }
+    return or { isNull() } or { validator(this!!) } or Fail
+}
 
-/**
- * Transforms the output value on successful validation.
- *
- * The transform function is only called if validation succeeds.
- *
- * Example:
- * ```kotlin
- * val validator = Kova.string().min(1).map { it.trim().uppercase() }
- * validator.validate("  hello  ") // Returns "HELLO"
- * ```
- *
- * @param transform Function to transform the validated value
- * @return A new validator with the transformed output type
- */
-fun <IN, OUT, NEW> Validator<IN, OUT>.map(
-    transform: Validator<OUT, NEW>
-): Validator<IN, NEW> = then(transform)
+@IgnorableReturnValue
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+inline fun <T : Any> T?.isNullOrAccumulate(validator: context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> Unit): Value<Unit> {
+    contract {
+        callsInPlace(validator, InvocationKind.AT_MOST_ONCE)
+        (this@isNullOrAccumulate != null) holdsIn validator
+    }
+    return or { isNull() } or { validator(this!!) } or Accumulate
+}
+
+@JvmName("orNel")
+context(_: ValidationContext)
+inline infix fun <R> EitherNel<FailureDetail, R>.or(validator: Validator<R>): Either<FailureDetail, R> {
+    contract { callsInPlace(validator, InvocationKind.AT_MOST_ONCE) }
+    return handleErrorWith { details -> org.komapper.extension.validator.or(validator).mapLeft { details or it } }
+}
+
+context(_: ValidationContext)
+inline infix fun <R> Either<FailureDetail, R>.or(validator: Validator<R>): Either<FailureDetail, R> {
+    contract { callsInPlace(validator, InvocationKind.AT_MOST_ONCE) }
+    return mapLeft { it.nel() } or validator
+}
+
+object Fail
+object Accumulate
+
+context(_: Raise<FailureDetail>)
+infix fun <R> Either<FailureDetail, R>.or(fail: Fail): R = bind()
+
+context(_: RaiseAccumulate<FailureDetail>)
+infix fun <R> Either<FailureDetail, R>.or(accumulate: Accumulate): Value<R> = bindOrAccumulate()
+
+@IgnorableReturnValue
+@JvmName("orUnit")
+context(_: RaiseAccumulate<FailureDetail>)
+infix fun Either<FailureDetail, Unit>.or(accumulate: Accumulate): Value<Unit> = bindOrAccumulate()
 
 /**
  * Adds a name to the validation path for better error reporting.
- *
+ *name
  * This is useful for identifying which field failed validation in complex objects.
  *
  * Example:
@@ -170,42 +150,6 @@ fun <IN, OUT, NEW> Validator<IN, OUT>.map(
  * @param name The name to add to the validation path
  * @return A new validator that tracks the path
  */
-fun <IN, OUT> Validator<IN, OUT>.name(name: String): Validator<IN, OUT> = { input ->
-    addPath(name, input) { addLog("Validator.name(name=$name)") { this(input) } }
-}
-
-/**
- * Composes two validators by applying the [before] validator first, then this validator.
- *
- * This is the reverse of [then].
- *
- * @param before The validator to apply first
- * @return A new validator that applies both validators in sequence
- */
-fun <IN, OUT, NEW> Validator<OUT, NEW>.compose(before: Validator<IN, OUT>): Validator<IN, NEW> =
-    before.then(this)
-
-/**
- * Chains two validators sequentially, passing the output of the first to the second.
- *
- * **Key characteristic**: The input type (IN) and output type (OUT) can be different types.
- * This allows type transformation through the validation chain.
- *
- * If the first validator fails, the second is not executed.
- *
- * Example with type transformation:
- * ```kotlin
- * // String -> Int transformation
- * val parseAndValidate = Kova.string()
- *     .isInt()
- *     .map { it.toInt() }
- *     .then(Kova.int().min(0).max(100))
- * // Input: String, Output: Int
- * ```
- *
- * @param after The validator to apply to the output of this validator
- * @return A new validator that applies both validators in sequence
- */
-infix fun <IN, OUT, NEW> Validator<IN, OUT>.then(after: Validator<OUT, NEW>): Validator<IN, NEW> = { input ->
-    addLog("Validator.then") { after(this(input)) }
-}
+context(_: ValidationContext)
+inline fun <T, R> T.name(name: String, block: context(ValidationContext) (T) -> R): R =
+    this.addPath(name) { addLog("Validator.name(name=$name)") { block(this) } }

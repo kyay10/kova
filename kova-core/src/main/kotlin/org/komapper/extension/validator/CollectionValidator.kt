@@ -1,5 +1,8 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.toNonEmptyListOrNull
+
 /**
  * Validates that the collection size is at least the specified minimum.
  *
@@ -14,10 +17,12 @@ package org.komapper.extension.validator
  * @param message Custom error message provider
  * @return A new validator with the minimum size constraint
  */
-fun <C : Collection<*>, S> Validator<C, S>.min(
-    size: Int,
-    message: MessageProvider2<C, Int, Int> = Message.resource2("kova.collection.min"),
-) = constrain(message.id) { satisfies(it.size >= size) { message(it, it.size, size) } }
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <C : Collection<*>> C.min(size: Int, message: MessageProvider2<C, Int, Int>) =
+    constrain(message.id) { satisfies(this.size >= size) { message(this, this.size, size) } }
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <C : Collection<*>> C.min(size: Int) = min(size, Message.resource2("kova.collection.min"))
 
 /**
  * Validates that the collection size does not exceed the specified maximum.
@@ -33,10 +38,12 @@ fun <C : Collection<*>, S> Validator<C, S>.min(
  * @param message Custom error message provider
  * @return A new validator with the maximum size constraint
  */
-fun <C : Collection<*>, S> Validator<C, S>.max(
-    size: Int,
-    message: MessageProvider2<C, Int, Int> = Message.resource2("kova.collection.max"),
-) = constrain(message.id) { satisfies(it.size <= size) { message(it, it.size, size) } }
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <C : Collection<*>> C.max(size: Int, message: MessageProvider2<C, Int, Int>) =
+    constrain(message.id) { satisfies(this.size <= size) { message(this, this.size, size) } }
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <C : Collection<*>> C.max(size: Int) = max(size, Message.resource2("kova.collection.max"))
 
 /**
  * Validates that the collection is not empty.
@@ -51,8 +58,10 @@ fun <C : Collection<*>, S> Validator<C, S>.max(
  * @param message Custom error message provider
  * @return A new validator with the not-empty constraint
  */
-fun <C : Collection<*>, S> Validator<C, S>.notEmpty(message: MessageProvider0<C> = Message.resource0("kova.collection.notEmpty")) =
-    constrain(message.id) { satisfies(it.isNotEmpty()) { message(it) } }
+@IgnorableReturnValue
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <C : Collection<*>> C.notEmpty(message: MessageProvider0<C> = Message.resource0("kova.collection.notEmpty")) =
+    toNonEmptyListOrNull().notNull { message(this) }
 
 /**
  * Validates that the collection size equals exactly the specified value.
@@ -68,10 +77,12 @@ fun <C : Collection<*>, S> Validator<C, S>.notEmpty(message: MessageProvider0<C>
  * @param message Custom error message provider
  * @return A new validator with the exact size constraint
  */
-fun <C : Collection<*>, S> Validator<C, S>.length(
-    size: Int,
-    message: MessageProvider1<C, Int> = Message.resource1("kova.collection.length"),
-) = constrain(message.id) { satisfies(it.size == size) { message(it, size) } }
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <C : Collection<*>> C.length(size: Int, message: MessageProvider1<C, Int>) =
+    constrain(message.id) { satisfies(this.size == size) { message(this, size) } }
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <C : Collection<*>> C.length(size: Int) = length(size, Message.resource1("kova.collection.length"))
 
 /**
  * Validates each element of the collection using the specified validator.
@@ -92,9 +103,13 @@ fun <C : Collection<*>, S> Validator<C, S>.length(
  * @param validator The validator to apply to each element
  * @return A new validator with per-element validation
  */
-fun <E, C : Collection<E>, S> Validator<C, S>.onEach(validator: Validator<E, *>) =
-    constrain("kova.collection.onEach") {
-        it.forEachIndexed { i, element ->
-            appendPath("[$i]<collection element>") { accumulating { validator(element) } }
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+inline infix fun <E, C : Collection<E>> C.onEach(
+    validator: context(ValidationContext, RaiseAccumulate<FailureDetail>) (E) -> Unit
+) = constrain("kova.collection.onEach") {
+    forEachIndexed { i, element ->
+        appendPath("[$i]<collection element>") {
+            val _ = accumulating { validator(element) }
         }
     }
+}

@@ -1,5 +1,7 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.RaiseAccumulate
+
 /**
  * Validates that the number is greater than or equal to the specified minimum value.
  *
@@ -14,10 +16,13 @@ package org.komapper.extension.validator
  * @param message Custom error message provider
  * @return A new validator with the minimum constraint
  */
-fun <T : Comparable<T>, S> Validator<T, S>.min(
-    value: T,
-    message: MessageProvider1<T, T> = Message.resource1("kova.number.min"),
-): Validator<T, S> = constrain(message.id, Constraints.min(value, message))
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Comparable<T>> T.min(value: T, message: MessageProvider1<T, T>) = constrain(message.id) {
+    satisfies(this >= value) { message(this, value) }
+}
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <T : Comparable<T>> T.min(value: T) = min(value, Message.resource1("kova.number.min"))
 
 /**
  * Validates that the number is less than or equal to the specified maximum value.
@@ -33,10 +38,13 @@ fun <T : Comparable<T>, S> Validator<T, S>.min(
  * @param message Custom error message provider
  * @return A new validator with the maximum constraint
  */
-fun <T : Comparable<T>, S> Validator<T, S>.max(
-    value: T,
-    message: MessageProvider1<T, T> = Message.resource1("kova.number.max"),
-): Validator<T, S> = constrain(message.id, Constraints.max(value, message))
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Comparable<T>> T.max(value: T, message: MessageProvider1<T, T>) = constrain(message.id) {
+    satisfies(this <= value) { message(this, value) }
+}
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <T : Comparable<T>> T.max(value: T) = max(value, Message.resource1("kova.number.max"))
 
 /**
  * Validates that the number is strictly greater than the specified value.
@@ -53,10 +61,13 @@ fun <T : Comparable<T>, S> Validator<T, S>.max(
  * @param message Custom error message provider
  * @return A new validator with the greater-than constraint
  */
-fun <T : Comparable<T>, S> Validator<T, S>.gt(
-    value: T,
-    message: MessageProvider1<T, T> = Message.resource1("kova.number.gt"),
-): Validator<T, S> = constrain(message.id, Constraints.gt(value, message))
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Comparable<T>> T.gt(value: T, message: MessageProvider1<T, T>) = constrain(message.id) {
+    satisfies(this > value) { message(this, value) }
+}
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <T : Comparable<T>> T.gt(value: T) = gt(value, Message.resource1("kova.number.gt"))
 
 /**
  * Validates that the number is greater than or equal to the specified value.
@@ -73,10 +84,11 @@ fun <T : Comparable<T>, S> Validator<T, S>.gt(
  * @param message Custom error message provider
  * @return A new validator with the greater-than-or-equal constraint
  */
-fun <T : Comparable<T>, S> Validator<T, S>.gte(
-    value: T,
-    message: MessageProvider1<T, T> = Message.resource1("kova.number.gte"),
-): Validator<T, S> = constrain(message.id, Constraints.gte(value, message))
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Comparable<T>> T.gte(value: T, message: MessageProvider1<T, T>) = min(value, message)
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <T : Comparable<T>> T.gte(value: T) = gte(value, Message.resource1("kova.number.gte"))
 
 /**
  * Validates that the number is strictly less than the specified value.
@@ -93,10 +105,13 @@ fun <T : Comparable<T>, S> Validator<T, S>.gte(
  * @param message Custom error message provider
  * @return A new validator with the less-than constraint
  */
-fun <T : Comparable<T>, S> Validator<T, S>.lt(
-    value: T,
-    message: MessageProvider1<T, T> = Message.resource1("kova.number.lt"),
-): Validator<T, S> = constrain(message.id, Constraints.lt(value, message))
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Comparable<T>> T.lt(value: T, message: MessageProvider1<T, T>) = constrain(message.id) {
+    satisfies(this < value) { message(this, value) }
+}
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <T : Comparable<T>> T.lt(value: T) = lt(value, Message.resource1("kova.number.lt"))
 
 /**
  * Validates that the number is less than or equal to the specified value.
@@ -113,10 +128,11 @@ fun <T : Comparable<T>, S> Validator<T, S>.lt(
  * @param message Custom error message provider
  * @return A new validator with the less-than-or-equal constraint
  */
-fun <T : Comparable<T>, S> Validator<T, S>.lte(
-    value: T,
-    message: MessageProvider1<T, T> = Message.resource1("kova.number.lte"),
-): Validator<T, S> = constrain(message.id, Constraints.lte(value, message))
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Comparable<T>> T.lte(value: T, message: MessageProvider1<T, T>) = max(value, message)
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <T : Comparable<T>> T.lte(value: T) = lte(value, Message.resource1("kova.number.lte"))
 
 /**
  * Validates that the number is positive (greater than zero).
@@ -132,11 +148,9 @@ fun <T : Comparable<T>, S> Validator<T, S>.lte(
  * @param message Custom error message provider
  * @return A new validator with the positive constraint
  */
-fun <T : Number, S> Validator<T, S>.positive(
-    message: MessageProvider0<T> = Message.resource0("kova.number.positive"),
-): Validator<T, S> = constrain(message.id) {
-    satisfies(it.toDouble() > 0.0) { message(it) }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Number> T.positive(message: MessageProvider0<T> = Message.resource0("kova.number.positive")) =
+    constrain(message.id) { satisfies(toDouble() > 0.0) { message(this) } }
 
 /**
  * Validates that the number is negative (less than zero).
@@ -152,11 +166,9 @@ fun <T : Number, S> Validator<T, S>.positive(
  * @param message Custom error message provider
  * @return A new validator with the negative constraint
  */
-fun <T : Number, S> Validator<T, S>.negative(
-    message: MessageProvider0<T> = Message.resource0("kova.number.negative"),
-): Validator<T, S> = constrain(message.id) {
-    satisfies(it.toDouble() < 0.0) { message(it) }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Number> T.negative(message: MessageProvider0<T> = Message.resource0("kova.number.negative")) =
+    constrain(message.id) { satisfies(toDouble() < 0.0) { message(this) } }
 
 /**
  * Validates that the number is not positive (less than or equal to zero).
@@ -172,11 +184,11 @@ fun <T : Number, S> Validator<T, S>.negative(
  * @param message Custom error message provider
  * @return A new validator with the not-positive constraint
  */
-fun <T : Number, S> Validator<T, S>.notPositive(
-    message: MessageProvider0<T> = Message.resource0("kova.number.notPositive"),
-): Validator<T, S> = constrain(message.id) {
-    satisfies(it.toDouble() <= 0.0) { message(it) }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Number> T.notPositive(message: MessageProvider0<T> = Message.resource0("kova.number.notPositive")) =
+    constrain(message.id) {
+        satisfies(toDouble() <= 0.0) { message(this) }
+    }
 
 /**
  * Validates that the number is not negative (greater than or equal to zero).
@@ -192,8 +204,6 @@ fun <T : Number, S> Validator<T, S>.notPositive(
  * @param message Custom error message provider
  * @return A new validator with the not-negative constraint
  */
-fun <T : Number, S> Validator<T, S>.notNegative(
-    message: MessageProvider0<T> = Message.resource0("kova.number.notNegative"),
-): Validator<T, S> = constrain(message.id) {
-    satisfies(it.toDouble() >= 0.0) { message(it) }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <T : Number> T.notNegative(message: MessageProvider0<T> = Message.resource0("kova.number.notNegative")) =
+    constrain(message.id) { satisfies(toDouble() >= 0.0) { message(this) } }

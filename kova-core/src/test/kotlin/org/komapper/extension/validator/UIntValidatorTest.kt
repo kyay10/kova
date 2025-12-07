@@ -1,294 +1,249 @@
 package org.komapper.extension.validator
 
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.arrow.core.shouldBeRight
+import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class UIntValidatorTest :
     FunSpec({
 
         context("plus") {
-            val validator = (Kova.uInt().max(10u) + Kova.uInt().max(20u)).min(5u)
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun UInt.validate() {
+                accumulatingUnit { max(10u) }
+                accumulatingUnit { max(20u) }
+                min(5u)
+            }
 
             test("success") {
-                validator.tryValidate(8u).shouldBeRight()
+                shouldBeValid { 8u.validate() }
             }
 
             test("failure") {
-                validator.tryValidate(15u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 15 must be less than or equal to 10"
-                }
+                shouldBeInvalidSingle { 15u.validate() }
+                    .message.content shouldBe "Number 15 must be less than or equal to 10"
             }
         }
 
         context("or") {
-            val validator = (Kova.uInt().max(10u) or Kova.uInt().max(20u)).min(5u)
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun UInt.validate() {
+                or { max(10u) } or { max(20u) } or Accumulate
+                min(5u)
+            }
 
             test("success : 10") {
-                validator.tryValidate(10u).shouldBeRight()
+                shouldBeValid { 10u.validate() }
             }
 
             test("success : 20") {
-                validator.tryValidate(20u).shouldBeRight()
+                shouldBeValid { 20u.validate() }
             }
 
             test("failure : 25") {
-                validator.tryValidate(25u).shouldBeLeft().shouldBeSingleton {
-                    it.message.id shouldBe "kova.or"
-                }
+                shouldBeInvalidSingle { 25u.validate() }.message.id shouldBe "kova.or"
             }
         }
 
         context("constrain") {
-            val validator =
-                Kova.uInt().constrain("test") {
-                    satisfies(it == 10u) { Message.Text("Constraint failed") }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun UInt.validate() = constrain("test") {
+                satisfies(this == 10u) { Message.Text("Constraint failed") }
+            }
 
             test("success") {
-                validator.tryValidate(10u).shouldBeRight()
+                shouldBeValid { 10u.validate() }
             }
 
             test("failure") {
-                validator.tryValidate(20u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Constraint failed"
-                }
+                shouldBeInvalidSingle { 20u.validate() }.message.content shouldBe "Constraint failed"
             }
         }
 
         context("min") {
-            val validator = Kova.uInt().min(5u)
-
             test("success with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeRight()
+                shouldBeValid { 6u min 5u }
             }
 
             test("success with equal value") {
-                validator.tryValidate(5u).shouldBeRight()
+                shouldBeValid { 5u min 5u }
             }
 
             test("failure with value less than threshold") {
-                validator.tryValidate(4u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 4 must be greater than or equal to 5"
-                }
+                shouldBeInvalidSingle { 4u min 5u }.message.content shouldBe "Number 4 must be greater than or equal to 5"
             }
         }
 
         context("max") {
-            val validator = Kova.uInt().max(10u)
-
             test("success with value less than threshold") {
-                validator.tryValidate(9u).shouldBeRight()
+                shouldBeValid { 9u max 10u }
             }
 
             test("success with equal value") {
-                validator.tryValidate(10u).shouldBeRight()
+                shouldBeValid { 10u max 10u }
             }
 
             test("failure with value greater than threshold") {
-                validator.tryValidate(11u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 11 must be less than or equal to 10"
-                }
+                shouldBeInvalidSingle { 11u max 10u }.message.content shouldBe "Number 11 must be less than or equal to 10"
             }
         }
 
         context("gt (greater than)") {
-            val validator = Kova.uInt().gt(5u)
-
             test("success with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeRight()
+                shouldBeValid { 6u gt 5u }
             }
 
             test("success with large value") {
-                validator.tryValidate(100u).shouldBeRight()
+                shouldBeValid { 100u gt 5u }
             }
 
             test("failure with equal value") {
-                validator.tryValidate(5u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5 must be greater than 5"
-                }
+                shouldBeInvalidSingle { 5u gt 5u }.message.content shouldBe "Number 5 must be greater than 5"
             }
 
             test("failure with value less than threshold") {
-                validator.tryValidate(4u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 4 must be greater than 5"
-                }
+                shouldBeInvalidSingle { 4u gt 5u }.message.content shouldBe "Number 4 must be greater than 5"
             }
         }
 
         context("gte (greater than or equal)") {
-            val validator = Kova.uInt().gte(5u)
-
             test("success with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeRight()
+                shouldBeValid { 6u gte 5u }
             }
 
             test("success with equal value") {
-                validator.tryValidate(5u).shouldBeRight()
+                shouldBeValid { 5u gte 5u }
             }
 
             test("failure with value less than threshold") {
-                validator.tryValidate(4u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 4 must be greater than or equal to 5"
-                }
+                shouldBeInvalidSingle { 4u gte 5u }.message.content shouldBe "Number 4 must be greater than or equal to 5"
             }
         }
 
         context("lt (less than)") {
-            val validator = Kova.uInt().lt(5u)
-
             test("success with value less than threshold") {
-                validator.tryValidate(4u).shouldBeRight()
+                shouldBeValid { 4u lt 5u }
             }
 
             test("success with zero") {
-                validator.tryValidate(0u).shouldBeRight()
+                shouldBeValid { 0u lt 5u }
             }
 
             test("failure with equal value") {
-                validator.tryValidate(5u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5 must be less than 5"
-                }
+                shouldBeInvalidSingle { 5u lt 5u }.message.content shouldBe "Number 5 must be less than 5"
             }
 
             test("failure with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 6 must be less than 5"
-                }
+                shouldBeInvalidSingle { 6u lt 5u }.message.content shouldBe "Number 6 must be less than 5"
             }
         }
 
         context("lte (less than or equal)") {
-            val validator = Kova.uInt().lte(5u)
-
             test("success with value less than threshold") {
-                validator.tryValidate(4u).shouldBeRight()
+                shouldBeValid { 4u lte 5u }
             }
 
             test("success with equal value") {
-                validator.tryValidate(5u).shouldBeRight()
+                shouldBeValid { 5u lte 5u }
             }
 
             test("failure with value greater than threshold") {
-                validator.tryValidate(6u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 6 must be less than or equal to 5"
-                }
+                shouldBeInvalidSingle { 6u lte 5u }.message.content shouldBe "Number 6 must be less than or equal to 5"
             }
         }
 
         context("uLong") {
             context("min") {
-                val validator = Kova.uLong().min(5uL)
-
                 test("success") {
-                    validator.tryValidate(6uL).shouldBeRight()
+                    shouldBeValid { 6uL min 5uL }
                 }
 
                 test("failure") {
-                    validator.tryValidate(4uL).shouldBeLeft().shouldBeSingleton {
-                        it.message.content shouldBe "Number 4 must be greater than or equal to 5"
-                    }
+                    shouldBeInvalidSingle { 4uL min 5uL }
+                        .message.content shouldBe "Number 4 must be greater than or equal to 5"
                 }
             }
 
             context("max") {
-                val validator = Kova.uLong().max(10uL)
-
                 test("success") {
-                    validator.tryValidate(9uL).shouldBeRight()
+                    shouldBeValid { 9uL max 10uL }
                 }
 
                 test("failure") {
-                    validator.tryValidate(11uL).shouldBeLeft().shouldBeSingleton {
-                        it.message.content shouldBe "Number 11 must be less than or equal to 10"
-                    }
+                    shouldBeInvalidSingle { 11uL max 10uL }
+                        .message.content shouldBe "Number 11 must be less than or equal to 10"
                 }
             }
         }
 
         context("uByte") {
             context("min") {
-                val validator = Kova.uByte().min(5u)
-
                 test("success") {
-                    validator.tryValidate(6u).shouldBeRight()
+                    shouldBeValid { 6u min 5u }
                 }
 
                 test("failure") {
-                    validator.tryValidate(4u).shouldBeLeft().shouldBeSingleton {
-                        it.message.content shouldBe "Number 4 must be greater than or equal to 5"
-                    }
+                    shouldBeInvalidSingle { 4u min 5u }.message.content shouldBe "Number 4 must be greater than or equal to 5"
                 }
             }
 
             context("max") {
-                val validator = Kova.uByte().max(10u)
-
                 test("success") {
-                    validator.tryValidate(9u).shouldBeRight()
+                    shouldBeValid { 9u max 10u }
                 }
 
                 test("failure") {
-                    validator.tryValidate(11u).shouldBeLeft().shouldBeSingleton {
-                        it.message.content shouldBe "Number 11 must be less than or equal to 10"
-                    }
+                    shouldBeInvalidSingle { 11u max 10u }.message.content shouldBe "Number 11 must be less than or equal to 10"
                 }
             }
         }
 
         context("uShort") {
             context("min") {
-                val validator = Kova.uShort().min(5u)
-
                 test("success") {
-                    validator.tryValidate(6u).shouldBeRight()
+                    shouldBeValid { 6u min 5u }
                 }
 
                 test("failure") {
-                    validator.tryValidate(4u).shouldBeLeft().shouldBeSingleton {
-                        it.message.content shouldBe "Number 4 must be greater than or equal to 5"
-                    }
+                    shouldBeInvalidSingle { 4u min 5u }.message.content shouldBe "Number 4 must be greater than or equal to 5"
                 }
             }
 
             context("max") {
-                val validator = Kova.uShort().max(10u)
-
                 test("success") {
-                    validator.tryValidate(9u).shouldBeRight()
+                    shouldBeValid { 9u max 10u }
                 }
 
                 test("failure") {
-                    validator.tryValidate(11u).shouldBeLeft().shouldBeSingleton {
-                        it.message.content shouldBe "Number 11 must be less than or equal to 10"
-                    }
+                    shouldBeInvalidSingle { 11u max 10u }
+                        .message.content shouldBe "Number 11 must be less than or equal to 10"
                 }
             }
         }
 
         context("chaining multiple validators") {
-            val validator = Kova.uInt().min(5u).max(10u).gt(6u).lte(9u)
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun UInt.validate() {
+                accumulatingUnit { min(5u) }
+                accumulatingUnit { max(10u) }
+                accumulatingUnit { gt(6u) }
+                lte(9u)
+            }
 
             test("success with value 7") {
-                validator.tryValidate(7u).shouldBeRight()
+                shouldBeValid { 7u.validate() }
             }
 
             test("success with value 9") {
-                validator.tryValidate(9u).shouldBeRight()
+                shouldBeValid { 9u.validate() }
             }
 
             test("failure with value 5") {
-                validator.tryValidate(5u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5 must be greater than 6"
-                }
+                shouldBeInvalidSingle { 5u.validate() }.message.content shouldBe "Number 5 must be greater than 6"
             }
 
             test("failure with value 10") {
-                validator.tryValidate(10u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 10 must be less than or equal to 9"
-                }
+                shouldBeInvalidSingle { 10u.validate() }.message.content shouldBe "Number 10 must be less than or equal to 9"
             }
         }
     })

@@ -1,42 +1,42 @@
 package org.komapper.extension.validator
 
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.arrow.core.shouldBeRight
+import arrow.core.raise.context.RaiseAccumulate
+import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class ComparableValidatorTest :
     FunSpec({
 
         context("plus") {
-            val validator = Kova.uInt().max(2u) + Kova.uInt().max(3u)
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun UInt.validate() {
+                accumulatingUnit { max(2u) }
+                max(3u)
+            }
 
             test("success") {
-                validator.tryValidate(1u).shouldBeRight()
+                shouldBeValid { 1u.validate() }
             }
 
             test("failure") {
-                val details = validator.tryValidate(5u).shouldBeLeft()
-                details.size shouldBe 2
+                val details = shouldBeInvalid { 5u.validate() }
+                details shouldHaveSize 2
                 details[0].message.content shouldBe "Number 5 must be less than or equal to 2"
                 details[1].message.content shouldBe "Number 5 must be less than or equal to 3"
             }
         }
 
         context("constrain") {
-            val validator = Kova.uInt().constrain("test") {
-                satisfies(it == 10u) { "Constraint failed" }
-            }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun UInt.validate() = constrain("test") { satisfies(this == 10u) { "Constraint failed" } }
 
             test("success") {
-                validator.tryValidate(10u).shouldBeRight()
+                shouldBeValid { 10u.validate() }
             }
 
             test("failure") {
-                validator.tryValidate(20u).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Constraint failed"
-                }
+                shouldBeInvalidSingle { 20u.validate() }.message.content shouldBe "Constraint failed"
             }
         }
     })

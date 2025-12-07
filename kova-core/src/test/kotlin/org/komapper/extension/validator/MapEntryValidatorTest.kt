@@ -1,27 +1,25 @@
 package org.komapper.extension.validator
 
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.arrow.core.shouldBeRight
+import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class MapEntryValidatorTest :
     FunSpec({
         context("constrain") {
-            val validator =
-                Kova.mapEntry<String, String>().constrain("test") {
-                    satisfies(it.key != it.value) { "Constraint failed: ${it.key}" }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Map.Entry<String, String>.validate() = constrain("test") {
+                satisfies(key != value) { "Constraint failed: $key" }
+            }
 
             test("success") {
-                validator.tryValidate(mapOf("a" to "1").entries.first()).shouldBeRight()
+                shouldBeValid { mapOf("a" to "1").entries.first().validate() }
             }
 
             test("failure") {
-                validator.tryValidate(mapOf("a" to "a").entries.first()).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Constraint failed: a"
-                }
+                shouldBeInvalidSingle {
+                    mapOf("a" to "a").entries.first().validate()
+                }.message.content shouldBe "Constraint failed: a"
             }
         }
     })

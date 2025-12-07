@@ -10,6 +10,9 @@ kotlin {
             "-Xcontext-parameters",
             "-opt-in=arrow.core.raise.ExperimentalRaiseAccumulateApi",
             "-opt-in=kotlin.contracts.ExperimentalContracts",
+            "-opt-in=kotlin.contracts.ExperimentalExtendedContracts",
+            "-Xreturn-value-checker=full",
+            "-Xallow-holdsin-contract",
         )
     }
 }

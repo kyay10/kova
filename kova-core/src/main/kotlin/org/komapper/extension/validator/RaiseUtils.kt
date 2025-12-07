@@ -13,3 +13,11 @@ inline fun <Error, A> accumulating(block: context(RaiseAccumulate<Error>) () -> 
     contract { callsInPlace(block, AT_MOST_ONCE) }
     return acc.accumulating(block)
 }
+
+@IgnorableReturnValue
+@RaiseDSL
+context(acc: Accumulate<Error>)
+inline fun <Error> accumulatingUnit(block: context(RaiseAccumulate<Error>) () -> Unit): RaiseAccumulate.Value<Unit> {
+    contract { callsInPlace(block, AT_MOST_ONCE) }
+    return acc.accumulating(block)
+}

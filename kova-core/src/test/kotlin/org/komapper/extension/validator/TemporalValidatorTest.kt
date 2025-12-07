@@ -1,7 +1,6 @@
 package org.komapper.extension.validator
 
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.arrow.core.shouldBeRight
+import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.core.spec.style.FunSpec
 import java.time.Clock
 import java.time.LocalDate
@@ -18,18 +17,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDate(clock).future()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDate.validate() = localDate(clock) { future() }
 
                 test("success") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeRight()
+                    shouldBeValid { date.plusDays(1).validate() }
                 }
 
                 test("failure - present") {
-                    validator.tryValidate(date).shouldBeLeft()
+                    shouldBeInvalid { date.validate() }
                 }
 
                 test("failure - past") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.minusDays(1).validate() }
                 }
             }
 
@@ -38,18 +39,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDate(clock).futureOrPresent()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDate.validate() = localDate(clock) { futureOrPresent() }
 
                 test("success - future") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeRight()
+                    shouldBeValid { date.plusDays(1).validate() }
                 }
 
                 test("success - present") {
-                    validator.tryValidate(date).shouldBeRight()
+                    shouldBeValid { date.validate() }
                 }
 
                 test("failure - past") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.minusDays(1).validate() }
                 }
             }
 
@@ -58,18 +61,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDate(clock).past()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDate.validate() = localDate(clock) { past() }
 
                 test("success") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeRight()
+                    shouldBeValid { date.minusDays(1).validate() }
                 }
 
                 test("failure - present") {
-                    validator.tryValidate(date).shouldBeLeft()
+                    shouldBeInvalid { date.validate() }
                 }
 
                 test("failure - future") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.plusDays(1).validate() }
                 }
             }
 
@@ -78,120 +83,116 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDate(clock).pastOrPresent()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDate.validate() = localDate(clock) { pastOrPresent() }
 
                 test("success - past") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeRight()
+                    shouldBeValid { date.minusDays(1).validate() }
                 }
 
                 test("success - present") {
-                    validator.tryValidate(date).shouldBeRight()
+                    shouldBeValid { date.validate() }
                 }
 
                 test("failure - future") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.plusDays(1).validate() }
                 }
             }
 
             context("min") {
                 val minDate = LocalDate.of(2025, 1, 1)
-                val validator = Kova.localDate().min(minDate)
 
                 test("success - equal") {
-                    validator.tryValidate(minDate).shouldBeRight()
+                    shouldBeValid { minDate min minDate }
                 }
 
                 test("success - greater") {
-                    validator.tryValidate(minDate.plusDays(1)).shouldBeRight()
+                    shouldBeValid { minDate.plusDays(1) min minDate }
                 }
 
                 test("failure") {
-                    validator.tryValidate(minDate.minusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { minDate.minusDays(1) min minDate }
                 }
             }
 
             context("max") {
                 val maxDate = LocalDate.of(2025, 12, 31)
-                val validator = Kova.localDate().max(maxDate)
 
                 test("success - equal") {
-                    validator.tryValidate(maxDate).shouldBeRight()
+                    shouldBeValid { maxDate max maxDate }
                 }
 
                 test("success - less") {
-                    validator.tryValidate(maxDate.minusDays(1)).shouldBeRight()
+                    shouldBeValid { maxDate.minusDays(1) max maxDate }
                 }
 
                 test("failure") {
-                    validator.tryValidate(maxDate.plusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { maxDate.plusDays(1) max maxDate }
                 }
             }
 
             context("gt") {
                 val date = LocalDate.of(2025, 6, 15)
-                val validator = Kova.localDate().gt(date)
 
                 test("success") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeRight()
+                    shouldBeValid { date.plusDays(1) gt date }
                 }
 
                 test("failure - equal") {
-                    validator.tryValidate(date).shouldBeLeft()
+                    shouldBeInvalid { date gt date }
                 }
 
                 test("failure - less") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.minusDays(1) gt date }
                 }
             }
 
             context("gte") {
                 val date = LocalDate.of(2025, 6, 15)
-                val validator = Kova.localDate().gte(date)
 
                 test("success - greater") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeRight()
+                    shouldBeValid { date.plusDays(1) gte date }
                 }
 
                 test("success - equal") {
-                    validator.tryValidate(date).shouldBeRight()
+                    shouldBeValid { date gte date }
                 }
 
                 test("failure") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.minusDays(1) gte date }
                 }
             }
 
             context("lt") {
                 val date = LocalDate.of(2025, 6, 15)
-                val validator = Kova.localDate().lt(date)
 
                 test("success") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeRight()
+                    shouldBeValid { date.minusDays(1) lt date }
                 }
 
                 test("failure - equal") {
-                    validator.tryValidate(date).shouldBeLeft()
+                    shouldBeInvalid { date lt date }
                 }
 
                 test("failure - greater") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.plusDays(1) lt date }
                 }
             }
 
             context("lte") {
                 val date = LocalDate.of(2025, 6, 15)
-                val validator = Kova.localDate().lte(date)
 
                 test("success - less") {
-                    validator.tryValidate(date.minusDays(1)).shouldBeRight()
+                    shouldBeValid { date.minusDays(1) lte date }
                 }
 
                 test("success - equal") {
-                    validator.tryValidate(date).shouldBeRight()
+                    shouldBeValid { date lte date }
                 }
 
                 test("failure") {
-                    validator.tryValidate(date.plusDays(1)).shouldBeLeft()
+                    shouldBeInvalid { date.plusDays(1) lte date }
                 }
             }
         }
@@ -203,18 +204,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localTime(clock).future()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalTime.validate() = localTime(clock) { future() }
 
                 test("success") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeRight()
+                    shouldBeValid { time.plusHours(1).validate() }
                 }
 
                 test("failure - present") {
-                    validator.tryValidate(time).shouldBeLeft()
+                    shouldBeInvalid { time.validate() }
                 }
 
                 test("failure - past") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.minusHours(1).validate() }
                 }
             }
 
@@ -224,18 +227,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localTime(clock).futureOrPresent()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalTime.validate() = localTime(clock) { futureOrPresent() }
 
                 test("success - future") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeRight()
+                    shouldBeValid { time.plusHours(1).validate() }
                 }
 
                 test("success - present") {
-                    validator.tryValidate(time).shouldBeRight()
+                    shouldBeValid { time.validate() }
                 }
 
                 test("failure - past") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.minusHours(1).validate() }
                 }
             }
 
@@ -245,18 +250,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localTime(clock).past()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalTime.validate() = localTime(clock) { past() }
 
                 test("success") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeRight()
+                    shouldBeValid { time.minusHours(1).validate() }
                 }
 
                 test("failure - present") {
-                    validator.tryValidate(time).shouldBeLeft()
+                    shouldBeInvalid { time.validate() }
                 }
 
                 test("failure - future") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.plusHours(1).validate() }
                 }
             }
 
@@ -266,120 +273,116 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localTime(clock).pastOrPresent()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalTime.validate() = localTime(clock) { pastOrPresent() }
 
                 test("success - past") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeRight()
+                    shouldBeValid { time.minusHours(1).validate() }
                 }
 
                 test("success - present") {
-                    validator.tryValidate(time).shouldBeRight()
+                    shouldBeValid { time.validate() }
                 }
 
                 test("failure - future") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.plusHours(1).validate() }
                 }
             }
 
             context("min") {
                 val minTime = LocalTime.of(9, 0, 0)
-                val validator = Kova.localTime().min(minTime)
 
                 test("success - equal") {
-                    validator.tryValidate(minTime).shouldBeRight()
+                    shouldBeValid { minTime min minTime }
                 }
 
                 test("success - greater") {
-                    validator.tryValidate(minTime.plusHours(1)).shouldBeRight()
+                    shouldBeValid { minTime.plusHours(1) min minTime }
                 }
 
                 test("failure") {
-                    validator.tryValidate(minTime.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { minTime.minusHours(1) min minTime }
                 }
             }
 
             context("max") {
                 val maxTime = LocalTime.of(17, 0, 0)
-                val validator = Kova.localTime().max(maxTime)
 
                 test("success - equal") {
-                    validator.tryValidate(maxTime).shouldBeRight()
+                    shouldBeValid { maxTime max maxTime }
                 }
 
                 test("success - less") {
-                    validator.tryValidate(maxTime.minusHours(1)).shouldBeRight()
+                    shouldBeValid { maxTime.minusHours(1) max maxTime }
                 }
 
                 test("failure") {
-                    validator.tryValidate(maxTime.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { maxTime.plusHours(1) max maxTime }
                 }
             }
 
             context("gt") {
                 val time = LocalTime.of(12, 0, 0)
-                val validator = Kova.localTime().gt(time)
 
                 test("success") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeRight()
+                    shouldBeValid { time.plusHours(1) gt time }
                 }
 
                 test("failure - equal") {
-                    validator.tryValidate(time).shouldBeLeft()
+                    shouldBeInvalid { time gt time }
                 }
 
                 test("failure - less") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.minusHours(1) gt time }
                 }
             }
 
             context("gte") {
                 val time = LocalTime.of(12, 0, 0)
-                val validator = Kova.localTime().gte(time)
 
                 test("success - greater") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeRight()
+                    shouldBeValid { time.plusHours(1) gte time }
                 }
 
                 test("success - equal") {
-                    validator.tryValidate(time).shouldBeRight()
+                    shouldBeValid { time gte time }
                 }
 
                 test("failure") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.minusHours(1) gte time }
                 }
             }
 
             context("lt") {
                 val time = LocalTime.of(12, 0, 0)
-                val validator = Kova.localTime().lt(time)
 
                 test("success") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeRight()
+                    shouldBeValid { time.minusHours(1) lt time }
                 }
 
                 test("failure - equal") {
-                    validator.tryValidate(time).shouldBeLeft()
+                    shouldBeInvalid { time lt time }
                 }
 
                 test("failure - greater") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.plusHours(1) lt time }
                 }
             }
 
             context("lte") {
                 val time = LocalTime.of(12, 0, 0)
-                val validator = Kova.localTime().lte(time)
 
                 test("success - less") {
-                    validator.tryValidate(time.minusHours(1)).shouldBeRight()
+                    shouldBeValid { time.minusHours(1) lte time }
                 }
 
                 test("success - equal") {
-                    validator.tryValidate(time).shouldBeRight()
+                    shouldBeValid { time lte time }
                 }
 
                 test("failure") {
-                    validator.tryValidate(time.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { time.plusHours(1) lte time }
                 }
             }
         }
@@ -390,18 +393,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDateTime(clock).future()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDateTime.validate() = localDateTime(clock) { future() }
 
                 test("success") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.plusHours(1).validate() }
                 }
 
                 test("failure - present") {
-                    validator.tryValidate(dateTime).shouldBeLeft()
+                    shouldBeInvalid { dateTime.validate() }
                 }
 
                 test("failure - past") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.minusHours(1).validate() }
                 }
             }
 
@@ -410,18 +415,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDateTime(clock).futureOrPresent()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDateTime.validate() = localDateTime(clock) { futureOrPresent() }
 
                 test("success - future") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.plusHours(1).validate() }
                 }
 
                 test("success - present") {
-                    validator.tryValidate(dateTime).shouldBeRight()
+                    shouldBeValid { dateTime.validate() }
                 }
 
                 test("failure - past") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.minusHours(1).validate() }
                 }
             }
 
@@ -430,18 +437,20 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDateTime(clock).past()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDateTime.validate() = localDateTime(clock) { past() }
 
                 test("success") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.minusHours(1).validate() }
                 }
 
                 test("failure - present") {
-                    validator.tryValidate(dateTime).shouldBeLeft()
+                    shouldBeInvalid { dateTime.validate() }
                 }
 
                 test("failure - future") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.plusHours(1).validate() }
                 }
             }
 
@@ -450,120 +459,116 @@ class TemporalValidatorTest :
                 val zone = ZoneOffset.UTC
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
-                val validator = Kova.localDateTime(clock).pastOrPresent()
+
+                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                fun LocalDateTime.validate() = localDateTime(clock) { pastOrPresent() }
 
                 test("success - past") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.minusHours(1).validate() }
                 }
 
                 test("success - present") {
-                    validator.tryValidate(dateTime).shouldBeRight()
+                    shouldBeValid { dateTime.validate() }
                 }
 
                 test("failure - future") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.plusHours(1).validate() }
                 }
             }
 
             context("min") {
                 val minDateTime = LocalDateTime.of(2025, 1, 1, 12, 0, 0)
-                val validator = Kova.localDateTime().min(minDateTime)
 
                 test("success - equal") {
-                    validator.tryValidate(minDateTime).shouldBeRight()
+                    shouldBeValid { minDateTime min minDateTime }
                 }
 
                 test("success - greater") {
-                    validator.tryValidate(minDateTime.plusHours(1)).shouldBeRight()
+                    shouldBeValid { minDateTime.plusHours(1) min minDateTime }
                 }
 
                 test("failure") {
-                    validator.tryValidate(minDateTime.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { minDateTime.minusHours(1) min minDateTime }
                 }
             }
 
             context("max") {
                 val maxDateTime = LocalDateTime.of(2025, 12, 31, 23, 59, 59)
-                val validator = Kova.localDateTime().max(maxDateTime)
 
                 test("success - equal") {
-                    validator.tryValidate(maxDateTime).shouldBeRight()
+                    shouldBeValid { maxDateTime max maxDateTime }
                 }
 
                 test("success - less") {
-                    validator.tryValidate(maxDateTime.minusHours(1)).shouldBeRight()
+                    shouldBeValid { maxDateTime.minusHours(1) max maxDateTime }
                 }
 
                 test("failure") {
-                    validator.tryValidate(maxDateTime.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { maxDateTime.plusHours(1) max maxDateTime }
                 }
             }
 
             context("gt") {
                 val dateTime = LocalDateTime.of(2025, 6, 15, 12, 0, 0)
-                val validator = Kova.localDateTime().gt(dateTime)
 
                 test("success") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.plusHours(1) gt dateTime }
                 }
 
                 test("failure - equal") {
-                    validator.tryValidate(dateTime).shouldBeLeft()
+                    shouldBeInvalid { dateTime gt dateTime }
                 }
 
                 test("failure - less") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.minusHours(1) gt dateTime }
                 }
             }
 
             context("gte") {
                 val dateTime = LocalDateTime.of(2025, 6, 15, 12, 0, 0)
-                val validator = Kova.localDateTime().gte(dateTime)
 
                 test("success - greater") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.plusHours(1) gte dateTime }
                 }
 
                 test("success - equal") {
-                    validator.tryValidate(dateTime).shouldBeRight()
+                    shouldBeValid { dateTime gte dateTime }
                 }
 
                 test("failure") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.minusHours(1) gte dateTime }
                 }
             }
 
             context("lt") {
                 val dateTime = LocalDateTime.of(2025, 6, 15, 12, 0, 0)
-                val validator = Kova.localDateTime().lt(dateTime)
 
                 test("success") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.minusHours(1) lt dateTime }
                 }
 
                 test("failure - equal") {
-                    validator.tryValidate(dateTime).shouldBeLeft()
+                    shouldBeInvalid { dateTime lt dateTime }
                 }
 
                 test("failure - greater") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.plusHours(1) lt dateTime }
                 }
             }
 
             context("lte") {
                 val dateTime = LocalDateTime.of(2025, 6, 15, 12, 0, 0)
-                val validator = Kova.localDateTime().lte(dateTime)
 
                 test("success - less") {
-                    validator.tryValidate(dateTime.minusHours(1)).shouldBeRight()
+                    shouldBeValid { dateTime.minusHours(1) lte dateTime }
                 }
 
                 test("success - equal") {
-                    validator.tryValidate(dateTime).shouldBeRight()
+                    shouldBeValid { dateTime lte dateTime }
                 }
 
                 test("failure") {
-                    validator.tryValidate(dateTime.plusHours(1)).shouldBeLeft()
+                    shouldBeInvalid { dateTime.plusHours(1) lte dateTime }
                 }
             }
         }

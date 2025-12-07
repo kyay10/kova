@@ -3,16 +3,6 @@ package org.komapper.extension.validator
 import arrow.core.raise.context.RaiseAccumulate
 
 /**
- * Type alias for map validators.
- *
- * Provides a convenient type for validators that work with Map types.
- *
- * @param K The key type of the map
- * @param V The value type of the map
- */
-typealias MapValidator<K, V, S> = Validator<Map<K, V>, S>
-
-/**
  * Validates that the map size is at least the specified minimum.
  *
  * Example:
@@ -26,12 +16,12 @@ typealias MapValidator<K, V, S> = Validator<Map<K, V>, S>
  * @param message Custom error message provider
  * @return A new validator with the minimum size constraint
  */
-fun <K, V, S> MapValidator<K, V, S>.min(
-    size: Int,
-    message: MessageProvider2<Map<K, V>, Int, Int> = Message.resource2("kova.map.min"),
-) = constrain(message.id) {
-    satisfies(it.size >= size) { message(it, it.size, size) }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <K, V> Map<K, V>.min(size: Int, message: MessageProvider2<Map<K, V>, Int, Int>) =
+    constrain(message.id) { satisfies(this.size >= size) { message(this, this.size, size) } }
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <K, V> Map<K, V>.min(size: Int) = min(size, Message.resource2("kova.map.min"))
 
 /**
  * Validates that the map size does not exceed the specified maximum.
@@ -47,12 +37,12 @@ fun <K, V, S> MapValidator<K, V, S>.min(
  * @param message Custom error message provider
  * @return A new validator with the maximum size constraint
  */
-fun <K, V, S> MapValidator<K, V, S>.max(
-    size: Int,
-    message: MessageProvider2<Map<K, V>, Int, Int> = Message.resource2("kova.map.max"),
-) = constrain(message.id) {
-    satisfies(it.size <= size) { message(it, it.size, size) }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <K, V> Map<K, V>.max(size: Int, message: MessageProvider2<Map<K, V>, Int, Int>) =
+    constrain(message.id) { satisfies(this.size <= size) { message(this, this.size, size) } }
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <K, V> Map<K, V>.max(size: Int) = max(size, Message.resource2("kova.map.max"))
 
 /**
  * Validates that the map is not empty.
@@ -67,10 +57,9 @@ fun <K, V, S> MapValidator<K, V, S>.max(
  * @param message Custom error message provider
  * @return A new validator with the not-empty constraint
  */
-fun <K, V, S> MapValidator<K, V, S>.notEmpty(message: MessageProvider0<Map<K, V>> = Message.resource0("kova.map.notEmpty")) =
-    constrain(message.id) {
-        satisfies(it.isNotEmpty()) { message(it) }
-    }
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <K, V> Map<K, V>.notEmpty(message: MessageProvider0<Map<K, V>> = Message.resource0("kova.map.notEmpty")) =
+    constrain(message.id) { satisfies(isNotEmpty()) { message(this) } }
 
 /**
  * Validates that the map size equals exactly the specified value.
@@ -86,12 +75,12 @@ fun <K, V, S> MapValidator<K, V, S>.notEmpty(message: MessageProvider0<Map<K, V>
  * @param message Custom error message provider
  * @return A new validator with the exact size constraint
  */
-fun <K, V, S> MapValidator<K, V, S>.length(
-    size: Int,
-    message: MessageProvider1<Map<K, V>, Int> = Message.resource1("kova.map.length"),
-) = constrain(message.id) {
-    satisfies(it.size == size) { message(it, size) }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+fun <K, V> Map<K, V>.length(size: Int, message: MessageProvider1<Map<K, V>, Int>) =
+    constrain(message.id) { satisfies(this.size == size) { message(this, size) } }
+
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <K, V> Map<K, V>.length(size: Int) = length(size, Message.resource1("kova.map.length"))
 
 /**
  * Validates each entry (key-value pair) of the map using the specified validator.
@@ -114,9 +103,9 @@ fun <K, V, S> MapValidator<K, V, S>.length(
  * @param validator The validator to apply to each entry
  * @return A new validator with per-entry validation
  */
-fun <K, V, S> MapValidator<K, V, S>.onEach(validator: Validator<Map.Entry<K, V>, *>) = constrain("kova.map.onEach") { map ->
-    appendPath("<map entry>") { map.validateOnEach { validator(it) } }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <K, V> Map<K, V>.onEach(validator: context(ValidationContext, RaiseAccumulate<FailureDetail>) (Map.Entry<K, V>) -> Unit) =
+    constrain("kova.map.onEach") { appendPath("<map entry>") { validateOnEach { validator(it) } } }
 
 /**
  * Validates each key of the map using the specified validator.
@@ -137,9 +126,9 @@ fun <K, V, S> MapValidator<K, V, S>.onEach(validator: Validator<Map.Entry<K, V>,
  * @param validator The validator to apply to each key
  * @return A new validator with per-key validation
  */
-fun <K, V, S> MapValidator<K, V, S>.onEachKey(validator: Validator<K, *>) = constrain("kova.map.onEachKey") { map ->
-    appendPath("<map key>") { map.validateOnEach { validator(it.key) } }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <K, V> Map<K, V>.onEachKey(validator: context(ValidationContext, RaiseAccumulate<FailureDetail>) (K) -> Unit) =
+    constrain("kova.map.onEachKey") { appendPath("<map key>") { validateOnEach { validator(it.key) } } }
 
 /**
  * Validates each value of the map using the specified validator.
@@ -160,11 +149,11 @@ fun <K, V, S> MapValidator<K, V, S>.onEachKey(validator: Validator<K, *>) = cons
  * @param validator The validator to apply to each value
  * @return A new validator with per-value validation
  */
-fun <K, V, S> MapValidator<K, V, S>.onEachValue(validator: Validator<V, *>) = constrain("kova.map.onEachValue") { map ->
-    map.validateOnEach { appendPath("[${it.key}]<map value>") { validator(it.value) } }
-}
+context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+infix fun <K, V> Map<K, V>.onEachValue(validator: context(ValidationContext, RaiseAccumulate<FailureDetail>) (V) -> Unit) =
+    constrain("kova.map.onEachValue") { validateOnEach { appendPath("[${it.key}]<map value>") { validator(it.value) } } }
 
 context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
 private fun <K, V> Map<K, V>.validateOnEach(
     validate: context(RaiseAccumulate<FailureDetail>) (Map.Entry<K, V>) -> Unit
-) = forEach { accumulating { validate(it) } }
+) = forEach { val _ = accumulating { validate(it) } }

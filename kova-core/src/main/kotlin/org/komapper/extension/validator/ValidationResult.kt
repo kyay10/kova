@@ -1,6 +1,6 @@
 package org.komapper.extension.validator
 
-import arrow.core.NonEmptyList
+import arrow.core.Nel
 
 /**
  * Detailed information about a validation failure.
@@ -24,37 +24,35 @@ sealed interface FailureDetail {
     val path get() = context.path
 }
 
+internal data class SimpleFailureDetail(
+    override val context: ValidationContext,
+    override val message: Message,
+) : FailureDetail
+
 context(c: ValidationContext)
 val Message.failure: FailureDetail get() = SimpleFailureDetail(c, this)
 
 context(c: ValidationContext)
 val String.failure: FailureDetail get() = Message.Text(this).failure
 
-internal data class SimpleFailureDetail(
-    override val context: ValidationContext,
-    override val message: Message,
-) : FailureDetail
-
 internal data class CompositeFailureDetail(
     override val context: ValidationContext,
-    val first: NonEmptyList<FailureDetail>,
-    val second: NonEmptyList<FailureDetail>,
+    val first: Nel<FailureDetail>,
+    val second: Nel<FailureDetail>,
 ) : FailureDetail {
-    override val message: Message get() {
-        val firstMessages = composeMessages(first)
-        val secondMessages = composeMessages(second)
-        return Message.Resource("kova.or", firstMessages, secondMessages)
-    }
+    override val message: Message get() = Message.Resource("kova.or", composeMessages(first), composeMessages(second))
 }
 
-private fun composeMessages(details: List<FailureDetail>): List<Message> =
-    details.map {
-        when (it) {
-            is SimpleFailureDetail -> it.message
-            is CompositeFailureDetail -> {
-                val first = composeMessages(it.first)
-                val second = composeMessages(it.second)
-                Message.Resource("kova.or.nested", first, second)
-            }
+context(c: ValidationContext)
+infix fun Nel<FailureDetail>.or(other: Nel<FailureDetail>): FailureDetail = CompositeFailureDetail(c, this, other)
+
+private fun composeMessages(details: List<FailureDetail>): List<Message> = details.map {
+    when (it) {
+        is SimpleFailureDetail -> it.message
+        is CompositeFailureDetail -> {
+            val first = composeMessages(it.first)
+            val second = composeMessages(it.second)
+            Message.Resource("kova.or.nested", first, second)
         }
     }
+}

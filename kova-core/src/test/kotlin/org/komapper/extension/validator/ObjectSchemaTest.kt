@@ -1,12 +1,12 @@
 package org.komapper.extension.validator
 
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.arrow.core.shouldBeRight
+import arrow.core.raise.context.RaiseAccumulate
+import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 
+@Suppress("UNNECESSARY_SAFE_CALL")
 class ObjectSchemaTest :
     FunSpec({
 
@@ -41,343 +41,313 @@ class ObjectSchemaTest :
         )
 
         context("plus") {
-
-            val a =
-                object : ObjectSchema<User>() {
-                    val name = User::name { Kova.string().min(1).max(10) }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun User.validate() = checking {
+                ::name {
+                    it.min(1)
+                    it.max(10)
                 }
-            val b =
-                object : ObjectSchema<User>() {
-                    val id = User::id { Kova.int().min(1) }
-                }
-
-            val userSchema = a + b
+                ::id { it.min(1) }
+            }
 
             test("success") {
                 val user = User(1, "abc")
-                userSchema.tryValidate(user).shouldBeRight()
+                shouldBeValid { user.validate() }
             }
 
             test("failure - 1 rule violated") {
                 val user = User(2, "too-long-name")
-                userSchema.tryValidate(user).shouldBeLeft().shouldBeSingleton {
-                    it.root shouldBe "User"
-                    it.path.fullName shouldBe "name"
-                    it.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
-                }
+                val detail = shouldBeInvalidSingle { user.validate() }
+                detail.root shouldBe "User"
+                detail.path.fullName shouldBe "name"
+                detail.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
             }
 
             test("failure - 2 rules violated") {
                 val user = User(0, "too-long-name")
-                val details = userSchema.tryValidate(user).shouldBeLeft()
-                details.size shouldBe 2
+                val details = shouldBeInvalid { user.validate() }
+                details shouldHaveSize 2
 
-                details[0].let {
-                    it.root shouldBe "User"
-                    it.path.fullName shouldBe "name"
-                    it.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
-                }
-                details[1].let {
-                    it.root shouldBe "User"
-                    it.path.fullName shouldBe "id"
-                    it.message.content shouldBe "Number 0 must be greater than or equal to 1"
-                }
+                val detail0 = details[0]
+                detail0.root shouldBe "User"
+                detail0.path.fullName shouldBe "name"
+                detail0.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
+                val detail1 = details[1]
+                detail1.root shouldBe "User"
+                detail1.path.fullName shouldBe "id"
+                detail1.message.content shouldBe "Number 0 must be greater than or equal to 1"
             }
         }
-
-        context("replace") {
-
-            val userSchema =
-                object : ObjectSchema<User>() {
-                    val id = User::id { Kova.int().min(1) }
-                    val name = User::name { Kova.string().min(1).max(10) }
-                }
-
-            test("success") {
-                val user = User(-1, "abc")
-                val newSchema = userSchema.replace(User::id, Kova.int().min(-1))
-                newSchema.tryValidate(user).shouldBeRight()
-            }
-        }
-
         context("constrain") {
-            data class Period(
-                val startDate: LocalDate,
-                val endDate: LocalDate,
-            )
+            data class Period(val startDate: LocalDate, val endDate: LocalDate)
 
-            val periodSchema =
-                object : ObjectSchema<Period>({
-                    constrain("test") {
-                        satisfies(it.startDate <= it.endDate) { "startDate must be less than or equal to endDate" }
-                    }
-                }) {}
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Period.validate() = checking {
+                constrain("test") {
+                    satisfies(this.startDate <= this.endDate) { "startDate must be less than or equal to endDate" }
+                }
+            }
 
             test("success") {
                 val period = Period(LocalDate.of(2020, 1, 1), LocalDate.of(2021, 1, 1))
-                periodSchema.tryValidate(period).shouldBeRight()
+                shouldBeValid { period.validate() }
             }
 
             test("failure") {
                 val period = Period(LocalDate.of(2020, 1, 1), LocalDate.of(2019, 1, 1))
-                periodSchema.tryValidate(period).shouldBeLeft().shouldBeSingleton {
-                    it.root shouldBe "Period"
-                    it.path.fullName shouldBe ""
-                    it.message.content shouldBe "startDate must be less than or equal to endDate"
-                }
+                val detail = shouldBeInvalidSingle { period.validate() }
+                detail.root shouldBe "Period"
+                detail.path.fullName shouldBe ""
+                detail.message.content shouldBe "startDate must be less than or equal to endDate"
             }
         }
 
         context("nullable") {
-            val validator =
-                object : ObjectSchema<User>() {
-                    val id = User::id { Kova.int().min(1) }
-                    val name = User::name { Kova.string().min(1).max(10) }
-                }.asNullable()
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun User.validate() = checking {
+                ::id { it.min(1) }
+                ::name {
+                    it.min(1)
+                    it.max(10)
+                }
+            }
 
             test("success - non null") {
                 val user = User(1, "abc")
-                validator.tryValidate(user).shouldBeRight()
+                shouldBeValid { user?.validate() }
             }
 
             test("success - null") {
-                validator.tryValidate(null).shouldBeRight()
+                shouldBeValid { null?.validate() }
             }
         }
 
         context("prop - simple") {
-
-            val userSchema =
-                object : ObjectSchema<User>() {
-                    val id = User::id { Kova.int().min(1) }
-                    val name = User::name { Kova.string().min(1).max(10) }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun User.validate() = checking {
+                ::id { it.min(1) }
+                ::name {
+                    it.min(1)
+                    it.max(10)
                 }
+            }
 
             test("success") {
-                val user = User(1, "abc")
-                userSchema.tryValidate(user).shouldBeRight()
+                shouldBeValid { User(1, "abc").validate() }
             }
 
             test("failure - 1 constraint violated") {
-                val user = User(2, "too-long-name")
-                userSchema.tryValidate(user).shouldBeLeft().shouldBeSingleton {
-                    it.root shouldBe "User"
-                    it.path.fullName shouldBe "name"
-                    it.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
-                }
+                val detail = shouldBeInvalidSingle { User(2, "too-long-name").validate() }
+                detail.root shouldBe "User"
+                detail.path.fullName shouldBe "name"
+                detail.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
             }
 
             test("failure - 2 constraints violated") {
-                val user = User(0, "too-long-name")
-                val details = userSchema.tryValidate(user).shouldBeLeft()
-                details.size shouldBe 2
+                val details = shouldBeInvalid { User(0, "too-long-name").validate() }
+                details shouldHaveSize 2
 
-                details[0].let {
-                    it.root shouldBe "User"
-                    it.path.fullName shouldBe "id"
-                    it.message.content shouldBe "Number 0 must be greater than or equal to 1"
-                }
-                details[1].let {
-                    it.root shouldBe "User"
-                    it.path.fullName shouldBe "name"
-                    it.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
-                }
+                val detail0 = details[0]
+                detail0.root shouldBe "User"
+                detail0.path.fullName shouldBe "id"
+                detail0.message.content shouldBe "Number 0 must be greater than or equal to 1"
+                val detail1 = details[1]
+                detail1.root shouldBe "User"
+                detail1.path.fullName shouldBe "name"
+                detail1.message.content shouldBe "\"too-long-name\" must be at most 10 characters"
             }
         }
 
         context("prop - nest") {
-
-            val streetSchema =
-                object : ObjectSchema<Street>() {
-                    val id = Street::id { Kova.int().min(1) }
-                    val name = Street::name { Kova.string().min(3).max(5) }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Street.validate() = checking {
+                ::id { it.min(1) }
+                ::name {
+                    it.min(3)
+                    it.max(5)
                 }
+            }
 
-            val addressSchema =
-                object : ObjectSchema<Address>() {
-                    val street = Address::street { streetSchema }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Address.validate() = checking {
+                ::street { it.validate() }
+            }
 
-            val employeeSchema =
-                object : ObjectSchema<Employee>() {
-                    val address = Employee::address { addressSchema }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Employee.validate() = checking {
+                ::address { it.validate() }
+            }
 
             test("success") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "def")))
-                employeeSchema.tryValidate(employee).shouldBeRight()
+                shouldBeValid { employee.validate() }
             }
 
             test("failure") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "too-long-name")))
-                employeeSchema.tryValidate(employee).shouldBeLeft().shouldBeSingleton {
-                    it.root shouldBe "Employee"
-                    it.path.fullName shouldBe "address.street.name"
-                    it.message.content shouldBe "\"too-long-name\" must be at most 5 characters"
-                }
+                val detail = shouldBeInvalidSingle { employee.validate() }
+                detail.root shouldBe "Employee"
+                detail.path.fullName shouldBe "address.street.name"
+                detail.message.content shouldBe "\"too-long-name\" must be at most 5 characters"
             }
         }
 
         context("prop - nest - dynamic") {
-
-            val streetSchema =
-                object : ObjectSchema<Street>() {
-                    val id = Street::id { Kova.int().min(1) }
-                    val name = Street::name { Kova.string().min(3).max(5) }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Street.validate() = checking {
+                ::id { it.min(1) }
+                ::name {
+                    it.min(3)
+                    it.max(5)
                 }
+            }
 
-            val addressSchema =
-                object : ObjectSchema<Address>() {
-                    val street = Address::street { streetSchema }
-                    val postalCode =
-                        Address::postalCode choose { address ->
-                            val base = Kova.string()
-                            when (address.country) {
-                                "US" -> base.length(8)
-                                else -> base.length(5)
-                            }
-                        }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Address.validate() = checking {
+                ::street { it.validate() }
+                ::postalCode {
+                    when (country) {
+                        "US" -> it.length(8)
+                        else -> it.length(5)
+                    }
                 }
+            }
 
-            val employeeSchema =
-                object : ObjectSchema<Employee>() {
-                    val address = Employee::address { addressSchema }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Employee.validate() = checking { ::address { it.validate() } }
 
             test("success - country is US") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "def"), country = "US", postalCode = "12345678"))
-                employeeSchema.tryValidate(employee).shouldBeRight()
+                shouldBeValid { employee.validate() }
             }
 
             test("success - country is not US") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "def"), country = "JP", postalCode = "12345"))
-                employeeSchema.tryValidate(employee).shouldBeRight()
+                shouldBeValid { employee.validate() }
             }
 
             test("failure - country is US") {
                 val employee =
                     Employee(1, "abc", Address(1, Street(1, "def"), country = "US", postalCode = "123456789"))
-                employeeSchema.tryValidate(employee).shouldBeLeft().shouldBeSingleton {
-                    it.root shouldBe "Employee"
-                    it.path.fullName shouldBe "address.postalCode"
-                    it.message.content shouldBe "\"123456789\" must be exactly 8 characters"
-                }
+                val detail = shouldBeInvalidSingle { employee.validate() }
+                detail.root shouldBe "Employee"
+                detail.path.fullName shouldBe "address.postalCode"
+                detail.message.content shouldBe "\"123456789\" must be exactly 8 characters"
             }
 
             test("failure - country is not US") {
                 val employee =
                     Employee(1, "abc", Address(1, Street(1, "def"), country = "JP", postalCode = "123456789"))
-                employeeSchema.tryValidate(employee).shouldBeLeft().shouldBeSingleton {
-                    it.root shouldBe "Employee"
-                    it.path.fullName shouldBe "address.postalCode"
-                    it.message.content shouldBe "\"123456789\" must be exactly 5 characters"
-                }
+                val detail = shouldBeInvalidSingle { employee.validate() }
+                detail.root shouldBe "Employee"
+                detail.path.fullName shouldBe "address.postalCode"
+                detail.message.content shouldBe "\"123456789\" must be exactly 5 characters"
             }
         }
 
         context("prop - nullable") {
-            val streetSchema =
-                object : ObjectSchema<Street>() {
-                    val id = Street::id { Kova.int().min(1) }
-                    val name = Street::name { Kova.string().min(3).max(5) }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Street.validate() = checking {
+                ::id { it.min(1) }
+                ::name {
+                    it.min(3)
+                    it.max(5)
                 }
+            }
 
-            val addressSchema =
-                object : ObjectSchema<Address>() {
-                    val street = Address::street { streetSchema }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Address.validate() = checking {
+                ::street { it.validate() }
+            }
 
-            val personSchema =
-                object : ObjectSchema<Person>() {
-                    val firstName = Person::firstName { Kova.string().asNullable() }
-                    val lastName = Person::lastName { Kova.nullable() }
-                    val address = Person::address { addressSchema.asNullable() }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Person.validate() = checking {
+                ::firstName { }
+                ::lastName { }
+                ::address { it?.validate() }
+            }
 
-            val personSchema2 =
-                object : ObjectSchema<Person>() {
-                    val firstName = Person::firstName { Kova.nullable<String>().notNull() }
-                    val lastName = Person::lastName { Kova.nullable<String>().notNull() }
-                    val address = Person::address { addressSchema.asNullable() }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Person.validate2() = checking {
+                ::firstName { it.notNull() }
+                ::lastName { it.notNull() }
+                ::address { it?.validate() }
+            }
 
             test("success") {
                 val person = Person(1, "abc", "def", Address(1, Street(1, "hij")))
-                personSchema.tryValidate(person).shouldBeRight()
+                shouldBeValid { person.validate() }
             }
 
             test("success - nullable") {
                 val person = Person(1, null, null, null)
-                personSchema.tryValidate(person).shouldBeRight()
+                shouldBeValid { person.validate() }
             }
 
             test("failure - isNotNull") {
                 val person = Person(1, null, null, null)
-                val details = personSchema2.tryValidate(person).shouldBeLeft()
-                details.size shouldBe 2
-                details[0].let {
-                    it.root shouldBe "Person"
-                    it.path.fullName shouldBe "firstName"
-                    it.message.content shouldBe "Value must not be null"
-                }
-                details[1].let {
-                    it.root shouldBe "Person"
-                    it.path.fullName shouldBe "lastName"
-                    it.message.content shouldBe "Value must not be null"
-                }
+                val details = shouldBeInvalid { person.validate2() }
+                details shouldHaveSize 2
+                val detail0 = details[0]
+                detail0.root shouldBe "Person"
+                detail0.path.fullName shouldBe "firstName"
+                detail0.message.content shouldBe "Value must not be null"
+                val detail1 = details[1]
+                detail1.root shouldBe "Person"
+                detail1.path.fullName shouldBe "lastName"
+                detail1.message.content shouldBe "Value must not be null"
             }
         }
 
         context("recursive") {
-            data class Node(
-                val children: List<Node> = emptyList(),
-            )
+            data class Node(val children: List<Node> = emptyList())
 
-            val nodeSchema =
-                object : ObjectSchema<Node>() {
-                    val children = Node::children { Kova.list<Node>().max(3).onEach(this) }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Node.validate(): Unit = checking {
+                ::children {
+                    accumulatingUnit { it.max(3) }
+                    it onEach { child -> child.validate() }
                 }
+            }
 
             test("success") {
                 val node = Node(listOf(Node(), Node(), Node()))
-                nodeSchema.tryValidate(node).shouldBeRight()
+                shouldBeValid { node.validate() }
             }
 
             test("failure - children size > 3") {
                 val node = Node(listOf(Node(), Node(), Node(listOf(Node(), Node(), Node(), Node()))))
-                nodeSchema.tryValidate(node).shouldBeLeft().shouldBeSingleton {
-                    it.path.fullName shouldBe "children[2]<collection element>.children"
-                    it.message.content shouldBe "Collection(size=4) must have at most 3 elements"
-                }
+                val detail = shouldBeInvalidSingle { node.validate() }
+                detail.path.fullName shouldBe "children[2]<collection element>.children"
+                detail.message.content shouldBe "Collection(size=4) must have at most 3 elements"
             }
 
             test("failure - grand children size > 3") {
                 val node = Node(listOf(Node(), Node(), Node(listOf(Node(listOf(Node(), Node(), Node(), Node()))))))
-                nodeSchema.tryValidate(node).shouldBeLeft().shouldBeSingleton {
-                    it.path.fullName shouldBe "children[2]<collection element>.children[0]<collection element>.children"
-                    it.message.content shouldBe "Collection(size=4) must have at most 3 elements"
-                }
+                val detail = shouldBeInvalidSingle { node.validate() }
+                detail.path.fullName shouldBe "children[2]<collection element>.children[0]<collection element>.children"
+                detail.message.content shouldBe "Collection(size=4) must have at most 3 elements"
             }
         }
 
         context("circular reference detection") {
-            data class NodeWithValue(
-                val value: Int,
-                var next: NodeWithValue?,
-            )
+            data class NodeWithValue(val value: Int, var next: NodeWithValue?)
 
-            val nodeSchema =
-                object : ObjectSchema<NodeWithValue>() {
-                    val value = NodeWithValue::value { Kova.int().min(0).max(100) }
-                    val next = NodeWithValue::next { Kova.nullable<NodeWithValue>().and(this.asNullable()) }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            tailrec fun NodeWithValue.validate(): Unit = checking {
+                ::value {
+                    it.min(0)
+                    it.max(100)
                 }
+                ::next { if (it != null) return it.validate() }
+            }
 
             test("circular reference detected - validation succeeds without error") {
                 val node1 = NodeWithValue(10, null)
                 val node2 = NodeWithValue(20, node1)
                 node1.next = node2 // Create circular reference: node1 -> node2 -> node1
 
-                nodeSchema.tryValidate(node1).shouldBeRight()
+                shouldBeValid { node1.validate() }
             }
 
             test("non-circular nested objects - all valid") {
@@ -386,7 +356,7 @@ class ObjectSchemaTest :
                 val node2 = NodeWithValue(20, node3)
                 val node1 = NodeWithValue(10, node2)
 
-                nodeSchema.tryValidate(node1).shouldBeRight()
+                shouldBeValid { node1.validate() }
             }
 
             test("constraint violation in nested object") {
@@ -394,20 +364,18 @@ class ObjectSchemaTest :
                 val node2 = NodeWithValue(20, node3)
                 val node1 = NodeWithValue(10, node2)
 
-                nodeSchema.tryValidate(node1).shouldBeLeft().shouldBeSingleton {
-                    it.path.fullName shouldBe "next.next.value"
-                    it.message.content shouldBe "Number 150 must be less than or equal to 100"
-                }
+                val detail = shouldBeInvalidSingle { node1.validate() }
+                detail.path.fullName shouldBe "next.next.value"
+                detail.message.content shouldBe "Number 150 must be less than or equal to 100"
             }
 
             test("constraint violation in root object") {
                 val node2 = NodeWithValue(20, null)
                 val node1 = NodeWithValue(-5, node2) // Invalid: < 0
 
-                nodeSchema.tryValidate(node1).shouldBeLeft().shouldBeSingleton {
-                    it.path.fullName shouldBe "value"
-                    it.message.content shouldBe "Number -5 must be greater than or equal to 0"
-                }
+                val detail = shouldBeInvalidSingle { node1.validate() }
+                detail.path.fullName shouldBe "value"
+                detail.message.content shouldBe "Number -5 must be greater than or equal to 0"
             }
 
             test("circular reference with constraint violation - stops before revisiting") {
@@ -415,10 +383,9 @@ class ObjectSchemaTest :
                 val node2 = NodeWithValue(20, node1)
                 node1.next = node2 // Create circular reference
 
-                nodeSchema.tryValidate(node1).shouldBeLeft().shouldBeSingleton {
-                    it.path.fullName shouldBe "value"
-                    it.message.content shouldBe "Number 200 must be less than or equal to 100"
-                }
+                val detail = shouldBeInvalidSingle { node1.validate() }
+                detail.path.fullName shouldBe "value"
+                detail.message.content shouldBe "Number 200 must be less than or equal to 100"
             }
         }
     })

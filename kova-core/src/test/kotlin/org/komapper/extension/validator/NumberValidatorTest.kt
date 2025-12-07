@@ -1,24 +1,27 @@
 package org.komapper.extension.validator
 
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.arrow.core.shouldBeRight
+import arrow.core.raise.context.RaiseAccumulate
+import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 
 class NumberValidatorTest :
     FunSpec({
 
         context("plus") {
-            val validator = (Kova.int().max(2) + Kova.int().max(3)).negative()
-
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Int.validate() {
+                accumulatingUnit { max(2) }
+                accumulatingUnit { max(3) }
+                negative()
+            }
             test("success") {
-                validator.tryValidate(-1).shouldBeRight()
+                shouldBeValid { (-1).validate() }
             }
 
             test("failure") {
-                val details = validator.tryValidate(5).shouldBeLeft()
-                details.size shouldBe 3
+                val details = shouldBeInvalid { 5.validate() }
+                details shouldHaveSize 3
                 details[0].message.content shouldBe "Number 5 must be less than or equal to 2"
                 details[1].message.content shouldBe "Number 5 must be less than or equal to 3"
                 details[2].message.content shouldBe "Number 5 must be negative"
@@ -26,312 +29,243 @@ class NumberValidatorTest :
         }
 
         context("or") {
-            val validator = (Kova.int().max(2) or Kova.int().max(3)).min(1)
-
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Int.validate() {
+                or { max(2) } or { max(3) } or Accumulate
+                min(1)
+            }
             test("success : 2") {
-                validator.tryValidate(2).shouldBeRight()
+                shouldBeValid { 2.validate() }
             }
             test("success : 3") {
-                validator.tryValidate(3).shouldBeRight()
+                shouldBeValid { 3.validate() }
             }
 
             test("failure : 4") {
-                validator.tryValidate(4).shouldBeLeft().shouldBeSingleton {
-                    it.message.id shouldBe "kova.or"
-                }
+                shouldBeInvalidSingle { 4.validate() }.message.id shouldBe "kova.or"
             }
         }
 
         context("constrain") {
-            val validator =
-                Kova.int().constrain("test") {
-                    satisfies(it == 10) { Message.Text("Constraint failed") }
-                }
+            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            fun Int.validate() = constrain("test") {
+                satisfies(this == 10) { Message.Text("Constraint failed") }
+            }
 
             test("success") {
-                validator.tryValidate(10).shouldBeRight()
+                shouldBeValid { 10.validate() }
             }
 
             test("failure") {
-                validator.tryValidate(20).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Constraint failed"
-                }
+                shouldBeInvalidSingle { 20.validate() }.message.content shouldBe "Constraint failed"
             }
         }
 
         context("positive") {
-            val validator = Kova.int().positive()
-
             test("success with positive number") {
-                validator.tryValidate(1).shouldBeRight()
+                shouldBeValid { 1.positive() }
             }
 
             test("success with large positive number") {
-                validator.tryValidate(100).shouldBeRight()
+                shouldBeValid { 100.positive() }
             }
 
             test("failure with zero") {
-                validator.tryValidate(0).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 0 must be positive"
-                }
+                shouldBeInvalidSingle { 0.positive() }.message.content shouldBe "Number 0 must be positive"
             }
 
             test("failure with negative number") {
-                validator.tryValidate(-1).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number -1 must be positive"
-                }
+                shouldBeInvalidSingle { (-1).positive() }.message.content shouldBe "Number -1 must be positive"
             }
         }
 
         context("positive with double") {
-            val validator = Kova.double().positive()
-
             test("success") {
-                validator.tryValidate(0.1).shouldBeRight()
+                shouldBeValid { 0.1.positive() }
             }
 
             test("failure") {
-                validator.tryValidate(-0.1).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number -0.1 must be positive"
-                }
+                shouldBeInvalidSingle { (-0.1).positive() }.message.content shouldBe "Number -0.1 must be positive"
             }
         }
 
         context("negative") {
-            val validator = Kova.int().negative()
-
             test("success with negative number") {
-                validator.tryValidate(-1).shouldBeRight()
+                shouldBeValid { (-1).negative() }
             }
 
             test("success with large negative number") {
-                validator.tryValidate(-100).shouldBeRight()
+                shouldBeValid { (-100).negative() }
             }
 
             test("failure with zero") {
-                validator.tryValidate(0).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 0 must be negative"
-                }
+                shouldBeInvalidSingle { 0.negative() }.message.content shouldBe "Number 0 must be negative"
             }
 
             test("failure with positive number") {
-                validator.tryValidate(1).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 1 must be negative"
-                }
+                shouldBeInvalidSingle { 1.negative() }.message.content shouldBe "Number 1 must be negative"
             }
         }
 
         context("negative with double") {
-            val validator = Kova.double().negative()
-
             test("success") {
-                validator.tryValidate(-0.1).shouldBeRight()
+                shouldBeValid { (-0.1).negative() }
             }
 
             test("failure") {
-                validator.tryValidate(0.1).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 0.1 must be negative"
-                }
+                shouldBeInvalidSingle { (0.1).negative() }.message.content shouldBe "Number 0.1 must be negative"
             }
         }
 
         context("notPositive") {
-            val validator = Kova.int().notPositive()
-
             test("success with zero") {
-                validator.tryValidate(0).shouldBeRight()
+                shouldBeValid { 0.notPositive() }
             }
 
             test("success with negative number") {
-                validator.tryValidate(-1).shouldBeRight()
+                shouldBeValid { (-1).notPositive() }
             }
 
             test("success with large negative number") {
-                validator.tryValidate(-100).shouldBeRight()
+                shouldBeValid { (-100).notPositive() }
             }
 
             test("failure with positive number") {
-                validator.tryValidate(1).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 1 must not be positive"
-                }
+                shouldBeInvalidSingle { (1).notPositive() }.message.content shouldBe "Number 1 must not be positive"
             }
         }
 
         context("notPositive with double") {
-            val validator = Kova.double().notPositive()
-
             test("success with zero") {
-                validator.tryValidate(0.0).shouldBeRight()
+                shouldBeValid { 0.0.notPositive() }
             }
 
             test("success with negative") {
-                validator.tryValidate(-0.1).shouldBeRight()
+                shouldBeValid { (-0.1).notPositive() }
             }
 
             test("failure with positive") {
-                validator.tryValidate(0.1).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 0.1 must not be positive"
-                }
+                shouldBeInvalidSingle { 0.1.notPositive() }.message.content shouldBe "Number 0.1 must not be positive"
             }
         }
 
         context("gt (greater than)") {
-            val validator = Kova.int().gt(5)
-
             test("success with value greater than threshold") {
-                validator.tryValidate(6).shouldBeRight()
+                shouldBeValid { 6 gt 5 }
             }
 
             test("success with large value") {
-                validator.tryValidate(100).shouldBeRight()
+                shouldBeValid { 100 gt 5 }
             }
 
             test("failure with equal value") {
-                validator.tryValidate(5).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5 must be greater than 5"
-                }
+                shouldBeInvalidSingle { 5 gt 5 }.message.content shouldBe "Number 5 must be greater than 5"
             }
 
             test("failure with value less than threshold") {
-                validator.tryValidate(4).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 4 must be greater than 5"
-                }
+                shouldBeInvalidSingle { 4 gt 5 }.message.content shouldBe "Number 4 must be greater than 5"
             }
         }
 
         context("gt with double") {
-            val validator = Kova.double().gt(5.5)
-
             test("success") {
-                validator.tryValidate(5.6).shouldBeRight()
+                shouldBeValid { 5.6 gt 5.5 }
             }
 
             test("failure with equal value") {
-                validator.tryValidate(5.5).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5.5 must be greater than 5.5"
-                }
+                shouldBeInvalidSingle { 5.5 gt 5.5 }.message.content shouldBe "Number 5.5 must be greater than 5.5"
             }
 
             test("failure with smaller value") {
-                validator.tryValidate(5.4).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5.4 must be greater than 5.5"
-                }
+                shouldBeInvalidSingle { 5.4 gt 5.5 }.message.content shouldBe "Number 5.4 must be greater than 5.5"
             }
         }
 
         context("gte (greater than or equal)") {
-            val validator = Kova.int().gte(5)
-
             test("success with value greater than threshold") {
-                validator.tryValidate(6).shouldBeRight()
+                shouldBeValid { 6 gte 5 }
             }
 
             test("success with equal value") {
-                validator.tryValidate(5).shouldBeRight()
+                shouldBeValid { 5 gte 5 }
             }
 
             test("failure with value less than threshold") {
-                validator.tryValidate(4).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 4 must be greater than or equal to 5"
-                }
+                shouldBeInvalidSingle { 4 gte 5 }.message.content shouldBe "Number 4 must be greater than or equal to 5"
             }
         }
 
         context("gte with double") {
-            val validator = Kova.double().gte(5.5)
-
             test("success with greater value") {
-                validator.tryValidate(5.6).shouldBeRight()
+                shouldBeValid { 5.6 gte 5.5 }
             }
 
             test("success with equal value") {
-                validator.tryValidate(5.5).shouldBeRight()
+                shouldBeValid { 5.5 gte 5.5 }
             }
 
             test("failure") {
-                validator.tryValidate(5.4).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5.4 must be greater than or equal to 5.5"
-                }
+                shouldBeInvalidSingle { 5.4 gte 5.5 }.message.content shouldBe "Number 5.4 must be greater than or equal to 5.5"
             }
         }
 
         context("lt (less than)") {
-            val validator = Kova.int().lt(5)
-
             test("success with value less than threshold") {
-                validator.tryValidate(4).shouldBeRight()
+                shouldBeValid { 4 lt 5 }
             }
 
             test("success with large negative value") {
-                validator.tryValidate(-100).shouldBeRight()
+                shouldBeValid { (-100) lt 5 }
             }
 
             test("failure with equal value") {
-                validator.tryValidate(5).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5 must be less than 5"
-                }
+                shouldBeInvalidSingle { 5 lt 5 }.message.content shouldBe "Number 5 must be less than 5"
             }
 
             test("failure with value greater than threshold") {
-                validator.tryValidate(6).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 6 must be less than 5"
-                }
+                shouldBeInvalidSingle { 6 lt 5 }.message.content shouldBe "Number 6 must be less than 5"
             }
         }
 
         context("lt with double") {
-            val validator = Kova.double().lt(5.5)
-
             test("success") {
-                validator.tryValidate(5.4).shouldBeRight()
+                shouldBeValid { 5.4 lt 5.5 }
             }
 
             test("failure with equal value") {
-                validator.tryValidate(5.5).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5.5 must be less than 5.5"
-                }
+                shouldBeInvalidSingle { 5.5 lt 5.5 }.message.content shouldBe "Number 5.5 must be less than 5.5"
             }
 
             test("failure with greater value") {
-                validator.tryValidate(5.6).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5.6 must be less than 5.5"
-                }
+                shouldBeInvalidSingle { 5.6 lt 5.5 }.message.content shouldBe "Number 5.6 must be less than 5.5"
             }
         }
 
         context("lte (less than or equal)") {
-            val validator = Kova.int().lte(5)
-
             test("success with value less than threshold") {
-                validator.tryValidate(4).shouldBeRight()
+                shouldBeValid { 4 lte 5 }
             }
 
             test("success with equal value") {
-                validator.tryValidate(5).shouldBeRight()
+                shouldBeValid { 5 lte 5 }
             }
 
             test("failure with value greater than threshold") {
-                validator.tryValidate(6).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 6 must be less than or equal to 5"
-                }
+                shouldBeInvalidSingle { 6 lte 5 }.message.content shouldBe "Number 6 must be less than or equal to 5"
             }
         }
 
         context("lte with double") {
-            val validator = Kova.double().lte(5.5)
-
             test("success with smaller value") {
-                validator.tryValidate(5.4).shouldBeRight()
+                shouldBeValid { 5.4 lte 5.5 }
             }
 
             test("success with equal value") {
-                validator.tryValidate(5.5).shouldBeRight()
+                shouldBeValid { 5.5 lte 5.5 }
             }
 
             test("failure") {
-                validator.tryValidate(5.6).shouldBeLeft().shouldBeSingleton {
-                    it.message.content shouldBe "Number 5.6 must be less than or equal to 5.5"
-                }
+                shouldBeInvalidSingle { 5.6 lte 5.5 }.message.content shouldBe "Number 5.6 must be less than or equal to 5.5"
             }
         }
     })

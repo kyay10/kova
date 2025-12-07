@@ -51,41 +51,29 @@ data class ValidationConfig(
 )
 
 context(c: ValidationContext)
-inline fun <R> addRoot(
-    name: String,
-    obj: Any?,
-    block: context(ValidationContext) () -> R
-): R {
+inline fun <R> Any?.addRoot(name: String, block: context(ValidationContext) () -> R): R {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
     // initialize root
-    return block(if (c.root.isEmpty()) c.copy(root = name, path = Path(name = "", obj = obj, parent = null)) else c)
+    return block(if (c.root.isEmpty()) c.copy(root = name, path = Path(name = "", obj = this, parent = null)) else c)
 }
 
 context(c: ValidationContext)
-inline fun <R> addPath(
-    name: String,
-    obj: Any?,
-    block: context(ValidationContext) () -> R
-): R {
+inline fun <R> Any?.addPath(name: String, block: context(ValidationContext) () -> R): R {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-    return block(c.copy(path = c.path.copy(name = name, obj = obj, parent = c.path)))
+    return block(c.copy(path = c.path.copy(name = name, obj = this, parent = c.path)))
 }
 
 context(c: ValidationContext)
-inline fun <R> bindObject(obj: Any?, block: context(ValidationContext) () -> R): R {
+inline fun <R> Any?.bindObject(block: context(ValidationContext) () -> R): R {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-    return block(c.copy(path = c.path.copy(obj = obj)))
+    return block(c.copy(path = c.path.copy(obj = this)))
 }
 
-context(c: ValidationContext, _: Raise<Unit>)
-inline fun <T, R> addPathChecked(
-    name: String,
-    obj: T,
-    block: context(ValidationContext) () -> R
-): R {
-    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-    ensure(obj == null || !c.path.containsObject(obj)) {}
-    return addPath(name, obj, block)
+context(c: ValidationContext)
+inline fun <R> Any?.addPathChecked(name: String, block: context(ValidationContext) () -> R): R? {
+    contract { callsInPlace(block, InvocationKind.AT_MOST_ONCE) }
+    if (this != null && c.path.containsObject(this)) return null
+    return this.addPath(name, block)
 }
 
 context(c: ValidationContext)
