@@ -24,12 +24,6 @@ import java.util.ResourceBundle
  * ```
  */
 sealed interface Message {
-    /** Optional constraint identifier for this message */
-    val id: String? get() = null
-
-    /** The formatted message content */
-    val content: String
-
     /**
      * A simple text message without i18n support.
      *
@@ -41,7 +35,9 @@ sealed interface Message {
      * Message.Text(content = "Value must be positive")
      * ```
      */
-    data class Text(override val content: String) : Message
+    class Text(private val content: String) : Message {
+        override fun toString() = content
+    }
 
     /**
      * A message loaded from a resource bundle for i18n support.
@@ -60,35 +56,144 @@ sealed interface Message {
      * Message.Resource("custom.range", value, min, max)
      * ```
      *
-     * @property id The resource bundle key
-     * @property args Arguments to substitute into the message pattern
+     * @param id The resource bundle key
+     * @param args Arguments to substitute into the message pattern
      */
-    data class Resource(
-        override val id: String,
-        val args: List<Any?>,
-    ) : Message {
-        constructor(id: String, vararg args: Any?) : this(id, args.toList())
-
-        override val content: String by lazy {
-            val pattern = getPattern(id)
-            val newArgs = args.map { resolveArg(it) }
-            MessageFormat.format(pattern, *newArgs.toTypedArray())
-        }
-
-        private fun resolveArg(arg: Any?): Any? =
-            when (arg) {
-                is Message -> arg.content
-                is Iterable<*> -> arg.map { resolveArg(it) }
-                else -> arg
-            }
+    class Resource(internal val id: String, vararg args: Any?) : Message {
+        override fun toString() = content
+        private val content: String by lazy { MessageFormat.format(getPattern(id), *args) }
     }
 
-    companion object : MessageProvider0Factory, MessageProvider1Factory, MessageProvider2Factory
+    companion object {
+        /**
+         * Creates a text-based message provider with no arguments.
+         *
+         * Use this for custom hardcoded error messages.
+         *
+         * Example:
+         * ```kotlin
+         * fun positive(message: MessageProvider0<Int> = Message.text0 { context ->
+         *     "Number ${context.input} must be positive"
+         * }): NumberValidator<Int>
+         * ```
+         *
+         * @param get Function that generates the message text
+         * @return A message provider
+         */
+        fun <T> text0(get: (T) -> String): (T) -> Message = { Text(get(it)) }
+
+        /**
+         * Creates a resource bundle-based message provider with no arguments.
+         *
+         * Use this for i18n support. The message is loaded from `kova.properties`.
+         *
+         * Example:
+         * ```kotlin
+         * fun notBlank(message: MessageProvider0<String> = Message.resource0("kova.string.notBlank")): StringValidator
+         * ```
+         *
+         * @param id The resource bundle key
+         * @return A message provider that loads messages from resources
+         */
+        fun <T> resource0(id: String): (T) -> Message = { Resource(id, it) }
+
+        /**
+         * Creates a text-based message provider with one argument.
+         *
+         * Use this for custom error messages that include one dynamic value.
+         *
+         * Example:
+         * ```kotlin
+         * fun min(
+         *     minValue: Int,
+         *     message: MessageProvider1<String, Int> = Message.text1 { context, min ->
+         *         "String must be at least $min characters, but was ${context.input.length}"
+         *     }
+         * ): StringValidator
+         * ```
+         *
+         * @param get Function that generates the message text from context and argument
+         * @return A message provider
+         */
+        fun <T, A1> text1(get: (T, A1) -> String): (T, A1) -> Message = { input, arg -> Text(get(input, arg)) }
+
+        /**
+         * Creates a resource bundle-based message provider with one argument.
+         *
+         * Use this for i18n support with one dynamic value.
+         * The message pattern uses `{0}` for the input and `{1}` for the argument.
+         *
+         * Example resource (kova.properties):
+         * ```properties
+         * kova.string.min={0} must be at least {1} characters
+         * ```
+         *
+         * Example usage:
+         * ```kotlin
+         * fun min(
+         *     minLength: Int,
+         *     message: MessageProvider1<String, Int> = Message.resource1("kova.string.min")
+         * ): StringValidator
+         * ```
+         *
+         * @param id The resource bundle key
+         * @return A message provider that loads messages from resources
+         */
+        fun <T, A1> resource1(id: String): (T, A1) -> Message = { input, arg1 -> Resource(id, input, arg1) }
+
+        /**
+         * Creates a text-based message provider with two arguments.
+         *
+         * Use this for custom error messages that include two dynamic values.
+         *
+         * Example:
+         * ```kotlin
+         * fun range(
+         *     min: Int,
+         *     max: Int,
+         *     message: MessageProvider2<Int, Int, Int> = Message.text2 { context, minVal, maxVal ->
+         *         "Value must be between $minVal and $maxVal, but was ${context.input}"
+         *     }
+         * ): NumberValidator<Int>
+         * ```
+         *
+         * @param get Function that generates the message text from context and arguments
+         * @return A message provider
+         */
+        fun <T, A1, A2> text2(get: (T, A1, A2) -> String): (T, A1, A2) -> Message = { input, arg1, arg2 ->
+            Text(get(input, arg1, arg2))
+        }
+
+        /**
+         * Creates a resource bundle-based message provider with two arguments.
+         *
+         * Use this for i18n support with two dynamic values.
+         * The message pattern uses `{0}` for the input, `{1}` for the first argument,
+         * and `{2}` for the second argument.
+         *
+         * Example resource (kova.properties):
+         * ```properties
+         * kova.collection.min={0} must have at least {1} elements, but has {2}
+         * ```
+         *
+         * Example usage:
+         * ```kotlin
+         * fun min(
+         *     size: Int,
+         *     message: MessageProvider2<List<*>, Int, Int> = Message.resource2("kova.collection.min")
+         * ): CollectionValidator<E, C>
+         * ```
+         *
+         * @param id The resource bundle key
+         * @return A message provider that loads messages from resources
+         */
+        fun <T, A1, A2> resource2(id: String): (T, A1, A2) -> Message = { input, arg1, arg2 ->
+            Resource(id, input, arg1, arg2)
+        }
+    }
 }
 
 private const val RESOURCE_BUNDLE_BASE_NAME = "kova"
+private val bundle = ResourceBundle.getBundle(RESOURCE_BUNDLE_BASE_NAME)
 
-internal fun getPattern(key: String): String {
-    val bundle = ResourceBundle.getBundle(RESOURCE_BUNDLE_BASE_NAME)
-    return bundle.getString(key)
-}
+internal fun getPattern(key: String) = bundle.getString(key)

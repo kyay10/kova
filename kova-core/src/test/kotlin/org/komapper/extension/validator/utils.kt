@@ -39,3 +39,6 @@ inline fun shouldBeInvalid(failFast: Boolean = false, block: Validation<Any?>) =
 @IgnorableReturnValue
 inline fun shouldBeInvalidSingle(failFast: Boolean = false, block: Validation<Any?>) =
     shouldBeInvalid(failFast, block).shouldBeSingleton().single()
+
+internal val Message.id get() = (this as? Message.Resource)?.id
+internal val Message.content get() = toString()

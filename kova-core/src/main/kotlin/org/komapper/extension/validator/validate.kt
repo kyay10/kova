@@ -25,8 +25,6 @@ import kotlin.contracts.contract
  * @param R The output type after successful validation
  */
 typealias Validation<R> = context(ValidationContext, RaiseAccumulate<FailureDetail>) () -> R
-typealias Validator<T, R> = context(ValidationContext, RaiseAccumulate<FailureDetail>) (T) -> R
-typealias Constraint<T> = Validator<T, Unit>
 
 /**
  * Validates the input
@@ -79,10 +77,10 @@ inline fun <R> validate(failFast: Boolean = false, validation: Validation<R>): R
     }
 }
 
-context(_: ValidationContext)
+context(c: ValidationContext)
 inline fun <R> or(validation: context(RaiseAccumulate<FailureDetail>) () -> R): EitherNel<FailureDetail, R> {
     contract { callsInPlace(validation, InvocationKind.AT_MOST_ONCE) }
-    return either { accumulateUnless(failFast) { validation() } }
+    return either { accumulateUnless(c.failFast) { validation() } }
 }
 
 context(_: ValidationContext, _: Raise<FailureDetail>)

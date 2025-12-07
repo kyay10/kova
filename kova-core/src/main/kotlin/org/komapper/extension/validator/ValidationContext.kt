@@ -20,10 +20,6 @@ data class ValidationContext(
     val failFast: Boolean = false,
 )
 
-/** Whether validation should stop at the first failure. */
-context(c: ValidationContext)
-val failFast: Boolean get() = c.failFast
-
 context(c: ValidationContext)
 inline fun <R> Any?.addRoot(name: String, block: context(ValidationContext) () -> R): R {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
@@ -60,11 +56,7 @@ inline fun <R> appendPath(text: String, block: context(ValidationContext) () -> 
  * @property obj The object at this path point (used for circular reference detection)
  * @property parent The parent path segment, or null if this is the root
  */
-data class Path(
-    val name: String,
-    val obj: Any?,
-    val parent: Path?,
-) {
+data class Path(val name: String, val obj: Any?, val parent: Path?) {
     /**
      * The full dotted path from root to this point, excluding the root class name.
      *
