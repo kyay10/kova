@@ -14,7 +14,7 @@ import java.time.temporal.Temporal
  *
  * @param T The temporal type
  */
-interface TemporalNow<T : Temporal> {
+interface TemporalNow<T> {
     /**
      * Gets the current temporal value using the provided clock.
      *
@@ -26,7 +26,7 @@ interface TemporalNow<T : Temporal> {
 }
 
 context(temporalNow: TemporalNow<T>, _: Clock)
-fun <T : Temporal> now(): T = temporalNow.now()
+fun <T> now(): T = temporalNow.now()
 
 /**
  * [TemporalNow] implementation for [LocalDate].
@@ -75,7 +75,7 @@ object LocalDateTimeNow : TemporalNow<LocalDateTime> {
  * val timeValidator = Kova.temporal<LocalTime>(LocalTimeNow)
  * ```
  */
-inline fun <T : Temporal, R> temporal(
+inline fun <T, R> temporal(
     temporalNow: TemporalNow<T>,
     clock: Clock = Clock.systemDefaultZone(),
     block: context(TemporalNow<T>, Clock) () -> R

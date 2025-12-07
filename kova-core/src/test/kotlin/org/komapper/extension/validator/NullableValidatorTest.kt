@@ -1,5 +1,7 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.Accumulate
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -22,7 +24,7 @@ class NullableValidatorTest :
         }
 
         context("isNull or nullable") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.isNullOrMin3Max3() = isNullOr {
                 accumulatingUnit { min(3) }
                 max(3)
@@ -83,7 +85,7 @@ class NullableValidatorTest :
         }
 
         context("and - each List element") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun List<Int?>.onEachNullableMin3() = onEach { it?.min(3) }
 
             test("success - non-null") {
@@ -116,7 +118,7 @@ class NullableValidatorTest :
         }
 
         context("toNonNullable - then") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.notNullAndMin3AndMax3() {
                 notNull()
                 min(3)

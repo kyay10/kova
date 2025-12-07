@@ -1,7 +1,6 @@
 package org.komapper.extension.validator
 
 import arrow.core.raise.Raise
-import arrow.core.raise.context.RaiseAccumulate
 import arrow.core.raise.either
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
@@ -30,19 +29,13 @@ inline fun <T> shouldRaise(block: Raise<T>.() -> Any?): T = either(block).should
  */
 inline fun <T, R> shouldNotRaise(block: Raise<T>.() -> R) = either(block).shouldBeRight()
 
-inline fun <R> shouldBeValid(
-    config: ValidationConfig = ValidationConfig(),
-    block: context(ValidationContext, RaiseAccumulate<FailureDetail>) () -> R
-) = shouldNotRaise { validate(config, block) }
+inline fun <R> shouldBeValid(failFast: Boolean = false, validation: Validation<R>) =
+    shouldNotRaise { validate(failFast, validation) }
 
 @IgnorableReturnValue
-inline fun shouldBeInvalid(
-    config: ValidationConfig = ValidationConfig(),
-    block: context(ValidationContext, RaiseAccumulate<FailureDetail>) () -> Any?
-) = shouldRaise { validate(config, block) }
+inline fun shouldBeInvalid(failFast: Boolean = false, block: Validation<Any?>) =
+    shouldRaise { validate(failFast, block) }
 
 @IgnorableReturnValue
-inline fun shouldBeInvalidSingle(
-    config: ValidationConfig = ValidationConfig(),
-    block: context(ValidationContext, RaiseAccumulate<FailureDetail>) () -> Any?
-) = shouldBeInvalid(config, block).shouldBeSingleton().single()
+inline fun shouldBeInvalidSingle(failFast: Boolean = false, block: Validation<Any?>) =
+    shouldBeInvalid(failFast, block).shouldBeSingleton().single()

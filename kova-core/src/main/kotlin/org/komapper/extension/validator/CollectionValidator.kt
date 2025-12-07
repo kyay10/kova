@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.Accumulate
+import arrow.core.raise.context.Raise
 import arrow.core.toNonEmptyListOrNull
 
 /**
@@ -17,11 +18,11 @@ import arrow.core.toNonEmptyListOrNull
  * @param message Custom error message provider
  * @return A new validator with the minimum size constraint
  */
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 fun <C : Collection<*>> C.min(size: Int, message: MessageProvider2<C, Int, Int>) =
-    constrain(message.id) { satisfies(this.size >= size) { message(this, this.size, size) } }
+    satisfies(this.size >= size) { message(this, this.size, size) }
 
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun <C : Collection<*>> C.min(size: Int) = min(size, Message.resource2("kova.collection.min"))
 
 /**
@@ -38,11 +39,11 @@ infix fun <C : Collection<*>> C.min(size: Int) = min(size, Message.resource2("ko
  * @param message Custom error message provider
  * @return A new validator with the maximum size constraint
  */
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 fun <C : Collection<*>> C.max(size: Int, message: MessageProvider2<C, Int, Int>) =
-    constrain(message.id) { satisfies(this.size <= size) { message(this, this.size, size) } }
+    satisfies(this.size <= size) { message(this, this.size, size) }
 
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun <C : Collection<*>> C.max(size: Int) = max(size, Message.resource2("kova.collection.max"))
 
 /**
@@ -59,7 +60,7 @@ infix fun <C : Collection<*>> C.max(size: Int) = max(size, Message.resource2("ko
  * @return A new validator with the not-empty constraint
  */
 @IgnorableReturnValue
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 fun <C : Collection<*>> C.notEmpty(message: MessageProvider0<C> = Message.resource0("kova.collection.notEmpty")) =
     toNonEmptyListOrNull().notNull { message(this) }
 
@@ -77,11 +78,11 @@ fun <C : Collection<*>> C.notEmpty(message: MessageProvider0<C> = Message.resour
  * @param message Custom error message provider
  * @return A new validator with the exact size constraint
  */
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 fun <C : Collection<*>> C.length(size: Int, message: MessageProvider1<C, Int>) =
-    constrain(message.id) { satisfies(this.size == size) { message(this, size) } }
+    satisfies(this.size == size) { message(this, size) }
 
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun <C : Collection<*>> C.length(size: Int) = length(size, Message.resource1("kova.collection.length"))
 
 /**
@@ -100,16 +101,9 @@ infix fun <C : Collection<*>> C.length(size: Int) = length(size, Message.resourc
  * validator.validate(listOf("a", "b"))        // Failure: elements too short
  * ```
  *
- * @param validator The validator to apply to each element
+ * @param constraint The validator to apply to each element
  * @return A new validator with per-element validation
  */
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-inline infix fun <E, C : Collection<E>> C.onEach(
-    validator: context(ValidationContext, RaiseAccumulate<FailureDetail>) (E) -> Unit
-) = constrain("kova.collection.onEach") {
-    forEachIndexed { i, element ->
-        appendPath("[$i]<collection element>") {
-            val _ = accumulating { validator(element) }
-        }
-    }
-}
+context(_: ValidationContext, _: Accumulate<FailureDetail>)
+inline infix fun <E, C : Collection<E>> C.onEach(constraint: Constraint<E>) =
+    forEachIndexed { i, e -> appendPath("[$i]<collection element>") { accumulatingUnit { constraint(e) } } }

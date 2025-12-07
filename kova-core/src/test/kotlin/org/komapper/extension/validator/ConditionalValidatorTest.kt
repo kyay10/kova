@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
@@ -8,7 +9,7 @@ import io.kotest.matchers.shouldBe
 class ConditionalValidatorTest :
     FunSpec({
         context("onlyIf") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int.validate() {
                 if (this % 2 == 0) min(3)
             }

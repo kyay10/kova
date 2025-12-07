@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import arrow.core.raise.context.raise
 import io.kotest.assertions.arrow.core.shouldHaveSize
@@ -30,7 +31,7 @@ class StringValidatorTest :
         }
 
         context("or") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.validate(): String {
                 or<Unit> { isInt() } or { literal("zero") } or Fail
                 return uppercase()
@@ -50,7 +51,7 @@ class StringValidatorTest :
         }
 
         context("chain") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.validate(): String = trim().also { it length 3 }.uppercase()
 
             test("success") {
@@ -63,10 +64,8 @@ class StringValidatorTest :
         }
 
         context("constrain") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-            fun String.validate() = constrain("test") {
-                satisfies(this == "OK") { "Constraint failed" }
-            }
+            context(_: ValidationContext, _: Raise<FailureDetail>)
+            fun String.validate() = satisfies(this == "OK") { "Constraint failed" }
 
             test("success") {
                 shouldBeValid { "OK".validate() }
@@ -434,7 +433,7 @@ class StringValidatorTest :
         }
 
         context("map - string bools") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.stringBools(): Boolean = when (this) {
                 "true" -> true
                 "1" -> true
@@ -487,7 +486,7 @@ class StringValidatorTest :
         }
 
         context("trim with constraints") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.trimMin3() = trim().also { it min 3 }
 
             test("success - trimmed value meets constraint") {
@@ -526,7 +525,7 @@ class StringValidatorTest :
         }
 
         context("toUpperCase with constraints") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.toUpperCaseMin3() = uppercase().also { it min 3 }
 
             test("success - transformed value meets constraint") {
@@ -566,7 +565,7 @@ class StringValidatorTest :
         }
 
         context("toLowerCase with constraints") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.toLowerCaseMin3() = lowercase().also { it min 3 }
 
             test("success - transformed value meets constraint") {

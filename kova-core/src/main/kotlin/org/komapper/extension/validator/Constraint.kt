@@ -1,6 +1,6 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.context.Raise
 import arrow.core.raise.ensure
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -18,7 +18,7 @@ import kotlin.experimental.ExperimentalTypeInference
  * @param message The error message to use if the condition is false
  * @return The constraint result
  */
-context(_: ValidationContext, r: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, r: Raise<FailureDetail>)
 inline fun satisfies(condition: Boolean, message: () -> Message) {
     contract {
         returns() implies condition
@@ -43,7 +43,7 @@ inline fun satisfies(condition: Boolean, message: () -> Message) {
 @JvmName("satisfiesString")
 @OptIn(ExperimentalTypeInference::class)
 @OverloadResolutionByLambdaReturnType
-context(_: ValidationContext, r: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, r: Raise<FailureDetail>)
 inline fun satisfies(condition: Boolean, message: () -> String) {
     contract {
         returns() implies condition

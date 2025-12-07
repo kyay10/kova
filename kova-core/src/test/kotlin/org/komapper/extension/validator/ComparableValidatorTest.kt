@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
@@ -28,8 +29,8 @@ class ComparableValidatorTest :
         }
 
         context("constrain") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-            fun UInt.validate() = constrain("test") { satisfies(this == 10u) { "Constraint failed" } }
+            context(_: ValidationContext, _: Raise<FailureDetail>)
+            fun UInt.validate() = satisfies(this == 10u) { "Constraint failed" }
 
             test("success") {
                 shouldBeValid { 10u.validate() }

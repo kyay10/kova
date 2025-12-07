@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.Accumulate
+import arrow.core.raise.context.Raise
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
@@ -18,7 +19,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("isNull") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.myIsNull(): Int {
                 isNull()
                 return this ?: 0
@@ -37,7 +38,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("isNull or nullable") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.isNullOrMin3Max3(): Int {
                 isNullOr {
                     accumulatingUnit { min(3) }
@@ -63,7 +64,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("isNull or nonNullable") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.isNullOrMin3Max3(): Int {
                 isNullOr {
                     accumulatingUnit { min(3) }
@@ -86,7 +87,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("isNull or then") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.isNullOrMin3OrMin5AndThenMax4(): Int {
                 isNullOr { or { min(3) } or { min(5) } or Fail }
                 return (this ?: 0).also { it max 4 }
@@ -112,7 +113,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("and") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.whenNotNullMin3() = this?.also { min(3) } ?: 0
 
             test("success - non-null") {
@@ -130,7 +131,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("and - each List element") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun List<Int?>.onEachNullableMin3() = onEach { it?.min(3) }
 
             test("success - non-null") {
@@ -149,7 +150,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("toNonNullable") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.nullableMin3() = this?.also { min(3) } ?: 0
 
             test("success - non-null") {
@@ -168,7 +169,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("toNonNullable - then") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.notNullAndMin3AndMax3() = (this ?: 4).also {
                 it min 3
                 it max 5
@@ -192,7 +193,7 @@ class WithDefaultNullableValidatorTest :
         }
 
         context("logs") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int?.isNullOrMin3Max3(): Int {
                 isNullOr { min(3) }
                 return this ?: 0

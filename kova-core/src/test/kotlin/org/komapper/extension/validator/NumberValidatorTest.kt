@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
@@ -31,7 +32,7 @@ class NumberValidatorTest :
         context("or") {
             context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
             fun Int.validate() {
-                or { max(2) } or { max(3) } or Accumulate
+                or { max(2) } or { max(3) } or Accum
                 min(1)
             }
             test("success : 2") {
@@ -47,10 +48,8 @@ class NumberValidatorTest :
         }
 
         context("constrain") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-            fun Int.validate() = constrain("test") {
-                satisfies(this == 10) { Message.Text("Constraint failed") }
-            }
+            context(_: ValidationContext, _: Raise<FailureDetail>)
+            fun Int.validate() = satisfies(this == 10) { Message.Text("Constraint failed") }
 
             test("success") {
                 shouldBeValid { 10.validate() }

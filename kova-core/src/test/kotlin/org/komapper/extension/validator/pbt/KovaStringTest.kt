@@ -1,6 +1,6 @@
 package org.komapper.extension.validator.pbt
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.context.Raise
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.choice
@@ -63,7 +63,7 @@ class KovaStringTest :
         test("min and max together") {
             checkAll(Arb.int(0..50), Arb.int(0..50)) { min, max ->
                 if (min <= max) {
-                    context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                    context(_: ValidationContext, _: Raise<FailureDetail>)
                     fun String.validate() {
                         min(min)
                         max(max)

@@ -32,7 +32,7 @@ internal data class SimpleFailureDetail(
 context(c: ValidationContext)
 val Message.failure: FailureDetail get() = SimpleFailureDetail(c, this)
 
-context(c: ValidationContext)
+context(_: ValidationContext)
 val String.failure: FailureDetail get() = Message.Text(this).failure
 
 internal data class CompositeFailureDetail(

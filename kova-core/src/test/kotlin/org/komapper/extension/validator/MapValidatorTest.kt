@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.Accumulate
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
@@ -66,20 +67,20 @@ class MapValidatorTest :
 
         context("constrain") {
             test("success") {
-                shouldBeValid { constrain("test") { satisfies(mapOf("a" to "1").size == 1) { "Constraint failed" } } }
+                shouldBeValid { satisfies(mapOf("a" to "1").size == 1) { "Constraint failed" } }
             }
 
             test("failure") {
                 shouldBeInvalidSingle {
-                    constrain("test") { satisfies(mapOf("a" to "1", "b" to "2").size == 1) { "Constraint failed" } }
+                    satisfies(mapOf("a" to "1", "b" to "2").size == 1) { "Constraint failed" }
                 }.message.content shouldBe "Constraint failed"
             }
         }
 
         context("onEach") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Map<String, String>.validate() =
-                onEach { constrain("test") { satisfies(it.key != it.value) { "Constraint failed: ${it.key}" } } }
+                onEach { satisfies(it.key != it.value) { "Constraint failed: ${it.key}" } }
 
             test("success") {
                 shouldBeValid { mapOf("a" to "1", "b" to "2").validate() }

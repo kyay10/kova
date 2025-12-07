@@ -1,5 +1,6 @@
 package org.komapper.extension.validator.pbt
 
+import arrow.core.raise.Accumulate
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.property.Arb
@@ -226,7 +227,7 @@ class KovaMapTest :
         }
 
         test("onEachValue with nested map validators") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Map<String, Map<String, Int>>.outerValidator() = onEachValue { it min 1 }
 
             // All inner maps have at least 1 entry

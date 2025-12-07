@@ -1,6 +1,6 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.context.Raise
 
 /**
  * Validates that the input equals the specified value.
@@ -16,11 +16,11 @@ import arrow.core.raise.context.RaiseAccumulate
  * @param message Custom error message provider
  * @return A new validator that accepts only the specified value
  */
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 fun <T> T.literal(value: T, message: MessageProvider1<T, T>) =
-    constrain(message.id) { satisfies(this == value) { message(this, value) } }
+    satisfies(this == value) { message(this, value) }
 
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun <T> T.literal(value: T) = literal(value, Message.resource1("kova.literal.single"))
 
 /**
@@ -37,9 +37,9 @@ infix fun <T> T.literal(value: T) = literal(value, Message.resource1("kova.liter
  * @param message Custom error message provider
  * @return A new validator that accepts only values from the list
  */
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 fun <T> T.literal(values: List<T>, message: MessageProvider1<T, List<T>>) =
-    constrain(message.id) { satisfies(this in values) { message(this, values) } }
+    satisfies(this in values) { message(this, values) }
 
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 infix fun <T> T.literal(values: List<T>) = literal<T>(values, Message.resource1("kova.literal.list"))

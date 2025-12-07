@@ -1,6 +1,6 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.Accumulate
 import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -11,7 +11,7 @@ class ObjectFactoryTest :
         context("withDefault") {
             data class User(val name: String?, val age: Int?)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun makeUser(name: String?, age: Int?): User = constructing {
                 val name by name.parameter("name") { it ?: "" }
                 val age by age.parameter("age") { it ?: 0 }
@@ -30,7 +30,7 @@ class ObjectFactoryTest :
         context("1 arg") {
             data class User(val id: Int)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun makeUser(id: Int): User = constructing {
                 id.property("id") { it.min(1) }
                 User(id)
@@ -51,7 +51,7 @@ class ObjectFactoryTest :
         context("2 args") {
             data class User(val id: Int, val name: String)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun makeUser(id: Int, name: String): User = constructing {
                 id.property("id") { it.min(1) }
                 name.property("name") {
@@ -70,14 +70,14 @@ class ObjectFactoryTest :
             }
 
             test("failure - failFast is true") {
-                shouldBeInvalidSingle(ValidationConfig(failFast = true)) { makeUser(0, "") }
+                shouldBeInvalidSingle(failFast = true) { makeUser(0, "") }
             }
         }
 
         context("2 args - generic validator") {
             data class User(val id: Int, val name: String)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun makeUser(id: Int, name: String): User = constructing {
                 id.property("id") { }
                 name.property("name") { }
@@ -94,19 +94,19 @@ class ObjectFactoryTest :
             data class Name(val value: String)
             data class Person(val name: Name, val age: Age)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun makeAge(value: Int): Age = constructing {
                 value.property("value") { it.min(0) }
                 Age(value)
             }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun makeName(name: String): Name = constructing {
                 name.property("value") { it.notBlank() }
                 Name(name)
             }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun makePerson(name: String, age: Int): Person = constructing {
                 val name by name.parameter("name") { makeName(it) }
                 val age by age.parameter("age") { makeAge(it) }

@@ -1,6 +1,6 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.context.Raise
 import io.kotest.core.spec.style.FunSpec
 import java.time.Clock
 import java.time.LocalDate
@@ -18,7 +18,7 @@ class TemporalValidatorTest :
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDate.validate() = localDate(clock) { future() }
 
                 test("success") {
@@ -40,7 +40,7 @@ class TemporalValidatorTest :
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDate.validate() = localDate(clock) { futureOrPresent() }
 
                 test("success - future") {
@@ -62,7 +62,7 @@ class TemporalValidatorTest :
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDate.validate() = localDate(clock) { past() }
 
                 test("success") {
@@ -84,7 +84,7 @@ class TemporalValidatorTest :
                 val instant = date.atStartOfDay(zone).toInstant()
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDate.validate() = localDate(clock) { pastOrPresent() }
 
                 test("success - past") {
@@ -205,7 +205,7 @@ class TemporalValidatorTest :
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalTime.validate() = localTime(clock) { future() }
 
                 test("success") {
@@ -228,7 +228,7 @@ class TemporalValidatorTest :
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalTime.validate() = localTime(clock) { futureOrPresent() }
 
                 test("success - future") {
@@ -251,7 +251,7 @@ class TemporalValidatorTest :
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalTime.validate() = localTime(clock) { past() }
 
                 test("success") {
@@ -274,7 +274,7 @@ class TemporalValidatorTest :
                 val instant = date.atTime(time).toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalTime.validate() = localTime(clock) { pastOrPresent() }
 
                 test("success - past") {
@@ -394,7 +394,7 @@ class TemporalValidatorTest :
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDateTime.validate() = localDateTime(clock) { future() }
 
                 test("success") {
@@ -416,7 +416,7 @@ class TemporalValidatorTest :
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDateTime.validate() = localDateTime(clock) { futureOrPresent() }
 
                 test("success - future") {
@@ -438,7 +438,7 @@ class TemporalValidatorTest :
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDateTime.validate() = localDateTime(clock) { past() }
 
                 test("success") {
@@ -460,7 +460,7 @@ class TemporalValidatorTest :
                 val instant = dateTime.toInstant(zone)
                 val clock = Clock.fixed(instant, zone)
 
-                context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+                context(_: ValidationContext, _: Raise<FailureDetail>)
                 fun LocalDateTime.validate() = localDateTime(clock) { pastOrPresent() }
 
                 test("success - past") {

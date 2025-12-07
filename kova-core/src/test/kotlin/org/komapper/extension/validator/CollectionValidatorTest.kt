@@ -1,5 +1,7 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.Accumulate
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
@@ -55,8 +57,8 @@ class CollectionValidatorTest :
         }
 
         context("constrain") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-            fun List<String>.validate() = constrain("test") { satisfies(size == 1) { "Constraint failed" } }
+            context(_: ValidationContext, _: Raise<FailureDetail>)
+            fun List<String>.validate() = satisfies(size == 1) { "Constraint failed" }
 
             test("success") {
                 shouldBeValid { listOf("1").validate() }
@@ -88,7 +90,7 @@ class CollectionValidatorTest :
             }
 
             test("failure - failFast is true") {
-                val detail = shouldBeInvalidSingle(ValidationConfig(failFast = true)) {
+                val detail = shouldBeInvalidSingle(failFast = true) {
                     listOf("123", "4567", "8910") onEach { it length 3 }
                 }
                 detail.root shouldBe ""
@@ -100,7 +102,7 @@ class CollectionValidatorTest :
         context("property") {
             data class ListHolder(val list: List<String>)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun ListHolder.validate() = checking { ::list { l -> l onEach { it length 3 } } }
 
             test("success") {

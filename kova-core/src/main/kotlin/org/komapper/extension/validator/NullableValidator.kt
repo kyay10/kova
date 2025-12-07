@@ -1,8 +1,8 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import arrow.core.raise.context.Raise
 
 /**
  * Validates that the input is not null.
@@ -20,7 +20,7 @@ import kotlin.contracts.contract
  * @return A new validator that rejects null
  */
 @IgnorableReturnValue
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 inline fun <T> T.notNull(message: () -> Message = { Message.Resource("kova.nullable.notNull") }): T & Any {
     contract {
         returns() implies (this@notNull != null)
@@ -31,8 +31,8 @@ inline fun <T> T.notNull(message: () -> Message = { Message.Resource("kova.nulla
     return this
 }
 
-context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+context(_: ValidationContext, _: Raise<FailureDetail>)
 fun <T : Any> T?.isNull(message: MessageProvider0<T> = Message.resource0("kova.nullable.isNull")) {
     contract { returns() implies (this@isNull == null) }
-    constrain(message.id) { satisfies(this == null) { message(this!!) } }
+    satisfies(this == null) { message(this!!) }
 }

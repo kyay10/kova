@@ -1,5 +1,6 @@
 package org.komapper.extension.validator
 
+import arrow.core.raise.context.Raise
 import arrow.core.raise.context.RaiseAccumulate
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -8,7 +9,7 @@ class ValidatorTest :
     FunSpec({
 
         context("validate") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int.validate() {
                 min(1)
                 max(10)
@@ -39,7 +40,7 @@ class ValidatorTest :
         }
 
         context("or: 2") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.length2or5() = or { length(2) } or { length(5) } or Fail
 
             test("success - length(2)") {
@@ -57,7 +58,7 @@ class ValidatorTest :
         }
 
         context("or: 3") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun String.length2or5or7() = or { length(2) } or { length(5) } or { length(7) } or Fail
 
             test("failure - length(3)") {
@@ -69,7 +70,7 @@ class ValidatorTest :
         }
 
         context("map") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int.validate() = also { min(1) } * 2
 
             test("success") {
@@ -81,7 +82,7 @@ class ValidatorTest :
         }
 
         context("compose") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Int.validate(): String {
                 min(3)
                 return toString().also { it max 1 }

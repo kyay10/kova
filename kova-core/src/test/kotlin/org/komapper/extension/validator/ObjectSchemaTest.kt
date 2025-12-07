@@ -1,6 +1,7 @@
 package org.komapper.extension.validator
 
-import arrow.core.raise.context.RaiseAccumulate
+import arrow.core.raise.Accumulate
+import arrow.core.raise.context.Raise
 import io.kotest.assertions.arrow.core.shouldHaveSize
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -41,7 +42,7 @@ class ObjectSchemaTest :
         )
 
         context("plus") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun User.validate() = checking {
                 ::name {
                     it.min(1)
@@ -81,11 +82,9 @@ class ObjectSchemaTest :
         context("constrain") {
             data class Period(val startDate: LocalDate, val endDate: LocalDate)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Raise<FailureDetail>)
             fun Period.validate() = checking {
-                constrain("test") {
-                    satisfies(this.startDate <= this.endDate) { "startDate must be less than or equal to endDate" }
-                }
+                satisfies(this.startDate <= this.endDate) { "startDate must be less than or equal to endDate" }
             }
 
             test("success") {
@@ -103,7 +102,7 @@ class ObjectSchemaTest :
         }
 
         context("nullable") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun User.validate() = checking {
                 ::id { it.min(1) }
                 ::name {
@@ -123,7 +122,7 @@ class ObjectSchemaTest :
         }
 
         context("prop - simple") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun User.validate() = checking {
                 ::id { it.min(1) }
                 ::name {
@@ -159,7 +158,7 @@ class ObjectSchemaTest :
         }
 
         context("prop - nest") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Street.validate() = checking {
                 ::id { it.min(1) }
                 ::name {
@@ -168,15 +167,11 @@ class ObjectSchemaTest :
                 }
             }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-            fun Address.validate() = checking {
-                ::street { it.validate() }
-            }
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
+            fun Address.validate() = checking { ::street { it.validate() } }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-            fun Employee.validate() = checking {
-                ::address { it.validate() }
-            }
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
+            fun Employee.validate() = checking { ::address { it.validate() } }
 
             test("success") {
                 val employee = Employee(1, "abc", Address(1, Street(1, "def")))
@@ -193,7 +188,7 @@ class ObjectSchemaTest :
         }
 
         context("prop - nest - dynamic") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Street.validate() = checking {
                 ::id { it.min(1) }
                 ::name {
@@ -202,7 +197,7 @@ class ObjectSchemaTest :
                 }
             }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Address.validate() = checking {
                 ::street { it.validate() }
                 ::postalCode {
@@ -213,7 +208,7 @@ class ObjectSchemaTest :
                 }
             }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Employee.validate() = checking { ::address { it.validate() } }
 
             test("success - country is US") {
@@ -246,7 +241,7 @@ class ObjectSchemaTest :
         }
 
         context("prop - nullable") {
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Street.validate() = checking {
                 ::id { it.min(1) }
                 ::name {
@@ -255,19 +250,17 @@ class ObjectSchemaTest :
                 }
             }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
-            fun Address.validate() = checking {
-                ::street { it.validate() }
-            }
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
+            fun Address.validate() = checking { ::street { it.validate() } }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Person.validate() = checking {
                 ::firstName { }
                 ::lastName { }
                 ::address { it?.validate() }
             }
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Person.validate2() = checking {
                 ::firstName { it.notNull() }
                 ::lastName { it.notNull() }
@@ -302,7 +295,7 @@ class ObjectSchemaTest :
         context("recursive") {
             data class Node(val children: List<Node> = emptyList())
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             fun Node.validate(): Unit = checking {
                 ::children {
                     accumulatingUnit { it.max(3) }
@@ -333,7 +326,7 @@ class ObjectSchemaTest :
         context("circular reference detection") {
             data class NodeWithValue(val value: Int, var next: NodeWithValue?)
 
-            context(_: ValidationContext, _: RaiseAccumulate<FailureDetail>)
+            context(_: ValidationContext, _: Accumulate<FailureDetail>)
             tailrec fun NodeWithValue.validate(): Unit = checking {
                 ::value {
                     it.min(0)
